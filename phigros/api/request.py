@@ -1,18 +1,38 @@
+from __future__ import annotations
+
+import os
+
 import curlify
 import requests
-from .model import *
+
+from .model import ServerRegion, ServerSecret, ServerURL
 
 _original_send = requests.Session.send
-def sendWithCURL(self, request, **kwargs):
+
+
+def _send_with_curl(self, request, **kwargs):
     print("[CURL]", curlify.to_curl(request))
     return _original_send(self, request, **kwargs)
-requests.Session.send = sendWithCURL
+
+
+# 默认不污染全局 requests 行为；需要时可设置环境变量启用：
+#   RHYTHMLIBRARY_DEBUG_CURL=1
+if os.getenv("RHYTHMLIBRARY_DEBUG_CURL") == "1":
+    requests.Session.send = _send_with_curl
 
 class BaseAPI:
-    def __init__(self, user_profile: dict, proxies: dict = None) -> None:
-        self.region = ServerRegion(user_profile.get("server", None))
+    def __init__(
+        self,
+        user_profile: dict,
+        proxies: dict | None = None,
+        *,
+        verify_ssl: bool = False,
+    ) -> None:
+        server_code = user_profile.get("serverCode", user_profile.get("server", None))
+        self.region = ServerRegion(server_code)
         self.user_profile = user_profile
         self.proxies = proxies
+        self.verify_ssl = verify_ssl
         
         self.requests = requests.Session()
 
@@ -38,7 +58,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             params=params,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def post(self, endpoint: str, data: dict = None) -> dict:
@@ -46,7 +69,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def put(self, endpoint: str, data: dict = None) -> dict:
@@ -54,7 +80,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
 class UserAPI(BaseAPI):

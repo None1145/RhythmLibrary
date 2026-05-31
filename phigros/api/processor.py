@@ -231,7 +231,13 @@ class Processor(UserAPI):
         sorted_files = sorted_files_by_extension(config.SAVES_DIR / self.user_profile["sessionToken"] / "save" / summary["saveKey"].split("/")[-2], extension=".bin")
         
         if update or not sorted_files:
-            data = self.requests.get(summary["saveURL"], allow_redirects=True, proxies=self.proxies, timeout=10, verify=False).content
+            data = self.requests.get(
+                summary["saveURL"],
+                allow_redirects=True,
+                proxies=self.proxies,
+                timeout=10,
+                verify=self.verify_ssl,
+            ).content
             save_data_to_file(data, config.SAVES_DIR / self.user_profile["sessionToken"] / "save" / summary["saveKey"].split("/")[-2] / f"{datetime.datetime.strptime(summary['updatedAt'], '%Y-%m-%dT%H:%M:%S.%fZ').timestamp()}")
         else:
             data = load_data_from_file(sorted_files[0])

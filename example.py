@@ -2,13 +2,13 @@ import kalpa
 import phigros
 import rotaeno
 
-kalpa.api.processor.MobileProcessor(
-    client_version=30209,
+kalpa.processor.get_user_info(
     user_profile={
         "userid": "your_userid",
-        "password": "your_password"
-    }
-).get_user_info()
+        "password": "your_password",
+    },
+    client_version=30209,
+)
 
 phigros.processor.get_best30(
     user_profile={

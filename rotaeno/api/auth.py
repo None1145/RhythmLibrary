@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import json
-import requests
 import tempfile
 from time import time
 from time import sleep
-from qrcode import make
+from typing import Any
+
+import requests
 from hashlib import md5
 from urllib.parse import urlparse
-from .model import *
+
+from .model import AuthServerURL, CloudServerURL, ServerRegion, ServerSecret
 
 class QRCodeLogin:
-    def __init__(self, region: ServerRegion, device_id=None) -> None:
+    def __init__(self, region: ServerRegion, device_id=None, *, verify_ssl: bool = False) -> None:
         self.device_id = device_id
+        self.verify_ssl = verify_ssl
         if device_id is None:
             raise ValueError("Device ID cannot be None")
         if region == ServerRegion.CN:
@@ -50,16 +55,24 @@ class QRCodeLogin:
         raw = f"{ts}{self.app_key}" if add_app_key else str(ts)
         headers["X-LC-Sign"] = f"{self.md5hash(raw)},{ts}"
 
-    def request(self, url, method="POST", headers=None, data=None, add_app_key=False, needError=False) -> dict:
+    def request(
+        self,
+        url: str,
+        method: str = "POST",
+        headers: dict[str, str] | None = None,
+        data: Any = None,
+        add_app_key: bool = False,
+        needError: bool = False,
+    ) -> dict:
         headers = headers or {}
         self.sign_headers(headers, add_app_key)
         try:
             if method == "POST":
                 if headers.get("Content-Type") == "application/json":
                     data = json.dumps(data)
-                response = requests.post(url, headers=headers, data=data, verify=False)
+                response = requests.post(url, headers=headers, data=data, verify=self.verify_ssl)
             else:
-                response = requests.get(url, headers=headers, verify=False)
+                response = requests.get(url, headers=headers, verify=self.verify_ssl)
                 response.raise_for_status()
         except requests.exceptions.SSLError:
             if needError: raise requests.exceptions.SSLError
@@ -68,6 +81,9 @@ class QRCodeLogin:
         return response.json()
 
     def get_qrcode(self, need_image=False) -> dict:
+        # qrcode 为可选依赖：仅在需要生成/展示二维码时导入
+        from qrcode import make
+
         device_id = self.device_id
         payload = {
             "client_id": self.client_id,
@@ -119,11 +135,20 @@ class QRCodeLogin:
         }
 
         headers = {"Content-Type": "application/json"}
-        response = requests.post(self.union_token_url, params=params, data=json.dumps(payload), headers=headers, verify=False)
+        response = requests.post(
+            self.union_token_url,
+            params=params,
+            data=json.dumps(payload),
+            headers=headers,
+            verify=self.verify_ssl,
+        )
         response.raise_for_status()
         return response.json()
 
     def get_objectid_and_sessiontoken(self, qrcode_data=None, show_qrcode=True) -> dict:
+        # qrcode 为可选依赖：仅在需要生成/展示二维码时导入
+        from qrcode import make
+
         if qrcode_data is None:
             qrcode_data = self.get_qrcode()
         
@@ -166,7 +191,7 @@ class QRCodeLogin:
             f"{self.cloud_server_address}/1.1/users",
             headers=headers,
             data=json.dumps(payload),
-            verify=False,
+            verify=self.verify_ssl,
             timeout=10
         )
         

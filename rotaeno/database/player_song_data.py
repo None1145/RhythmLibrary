@@ -117,4 +117,5 @@ class PlayerSongDataManager:
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(os.path.join(current_dir, "player_song_data"), exist_ok=True)
 player_song_score_manager = PlayerSongDataManager(os.path.join(current_dir, "player_song_data"))

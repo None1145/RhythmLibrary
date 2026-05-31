@@ -8,7 +8,7 @@ import json
 def get_api_processor(user_profile: dict) -> api.processor.Processor:
     return api.processor.Processor(user_profile=user_profile)
 
-def best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
+def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
     processor = get_api_processor(user_profile)
     
     latest_summary = processor.get_latest_summary(update=user_profile.get("update", False))
@@ -41,3 +41,8 @@ def best30(user_profile: dict, just_data: bool = False, just_html: bool = False)
     if just_html: return html
     
     return utils.render_html_to_jpg(window_size=(1100, 1350), html=html)
+
+
+# 兼容旧名称（历史版本使用 best30）
+def best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
+    return get_best30(user_profile=user_profile, just_data=just_data, just_html=just_html)

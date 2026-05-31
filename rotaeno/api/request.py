@@ -1,15 +1,27 @@
-import time
+from __future__ import annotations
+
+import hashlib
 import json
 import random
-import hashlib
+import time
+
 import requests
-from .model import *
+
+from .model import FriendAccount, ServerRegion, ServerSecret, ServerURL
 
 class BaseAPI:
-    def __init__(self, region: ServerRegion, user_profile: dict, proxies: dict = None) -> None:
+    def __init__(
+        self,
+        region: ServerRegion,
+        user_profile: dict,
+        proxies: dict | None = None,
+        *,
+        verify_ssl: bool = False,
+    ) -> None:
         self.region = region
         self.user_profile = user_profile
         self.proxies = proxies
+        self.verify_ssl = verify_ssl
 
         if region == ServerRegion.CN:
             self.base_url = ServerURL.CN
@@ -49,7 +61,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             params=params,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def post(self, endpoint: str, data: dict = None) -> dict:
@@ -57,7 +72,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def put(self, endpoint: str, data: dict = None) -> dict:
@@ -65,15 +83,26 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
 class UserAPI(BaseAPI):
+    def __init__(self, region, user_profile, proxies = None, *, verify_ssl = False):
+        super().__init__(region, user_profile, proxies, verify_ssl=verify_ssl)
+        
+        self.object_id = None
+    
     def get_cloud_save(self, get_object_id: bool = False) -> dict:
         if not get_object_id:
             object_id = self.user_profile.get("objectID", "")
         else:
             object_id = self.get_user_data()["objectId"]
+        
+        self.object_id = object_id
+        
         params = {
             "where": json.dumps({
                 "user": {

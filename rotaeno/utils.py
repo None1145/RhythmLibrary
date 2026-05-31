@@ -1,13 +1,14 @@
 import os
 import tempfile
-from PIL import Image
-import playwright.sync_api
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMP_DIR = os.path.join(CURRENT_DIR, "temp")
 if os.path.exists(TEMP_DIR) is False: os.makedirs(TEMP_DIR)
 
 def compress_image(image_path, max_size_mb=9.5, quality=95):
+    # PIL 为可选依赖：仅在需要图片压缩时导入
+    from PIL import Image
+
     max_size_bytes = max_size_mb * 1024 * 1024
     if os.path.getsize(image_path) > max_size_bytes:
         with Image.open(image_path) as img:
@@ -22,8 +23,9 @@ def compress_image(image_path, max_size_mb=9.5, quality=95):
                     output_path = tmp.name
                     img.save(output_path, format="WEBP", quality=quality, method=6)
                     if os.path.getsize(output_path) <= max_size_bytes: return output_path
-            except:
-                ...
+            except Exception:
+                # webp 保存失败时退回 jpg
+                pass
             with tempfile.NamedTemporaryFile(mode='w+t', delete=False, suffix=".jpg", dir=TEMP_DIR) as tmp:
                 output_path = tmp.name
                 img.save(output_path, format="JPEG", quality=quality, optimize=True)
@@ -35,6 +37,9 @@ def compress_image(image_path, max_size_mb=9.5, quality=95):
         return output_path
 
 def render_html_to_jpg(window_size, html=None, html_path=None):
+    # playwright 为可选依赖：仅在需要渲染 HTML 时导入
+    import playwright.sync_api
+
     with playwright.sync_api.sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={"width": window_size[0], "height": window_size[1]})

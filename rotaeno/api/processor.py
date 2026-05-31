@@ -3,6 +3,9 @@ from ..database import player_data as player_data_database
 from ..database import player_song_data as player_song_data_database
 from .request import UserAPI
 
+from common import config
+
+import time
 import msgpack
 from typing import Tuple, Any
 from datetime import datetime
@@ -98,7 +101,7 @@ def find_keys_in_any_dict(any_dict: dict, keys: list, default: Any = None) -> An
     raise KeyError(f"{keys} not in {list(any_dict.keys())}")
 
 class Processor(UserAPI):
-    def get_cloud_save(self, get_object_id: bool = False, raw_data: dict = None, save_path: str = None, add_to_database: bool = False) -> dict:
+    def get_cloud_save(self, get_object_id: bool = False) -> dict:
         def format_duration_en(td: timedelta):
             total_seconds = int(td.total_seconds())
             hours = total_seconds // 3600
@@ -113,18 +116,24 @@ class Processor(UserAPI):
                 parts.append(f"{seconds} second{'s' if seconds not in [0, 1] else ''}")
             return " ".join(parts)
         
-        if raw_data:
-            cloud_save = raw_data["results"][0]["cloudSave"]
+        if self.user_profile["serverCode"].startswith("friend_"):
+            followee_data = self.get_followee_data(short_id=self.user_profile["shortID"], raw_data=self.follow_user(short_id=self.user_profile["shortID"]))
+            self.unfollow_user(short_id=self.user_profile["shortID"])
+            raw_data = self.followee_data_to_cloud_save_raw_data_format(followee_data=followee_data)
+            
+            object_id = f"{self.user_profile['serverCode']}_{self.user_profile['shortID']}"
         else:
-            if self.user_profile["serverCode"].startswith("friend_"):
-                followee_data = self.get_followee_data(short_id=self.user_profile["shortID"], raw_data=self.follow_user(short_id=self.user_profile["shortID"]))
-                self.unfollow_user(short_id=self.user_profile["shortID"])
-                raw_data = self.followee_data_to_cloud_save_raw_data_format(followee_data=followee_data)
+            raw_data = super().get_cloud_save(get_object_id=get_object_id)
+            
+            if get_object_id:
+                object_id = self.object_id
             else:
-                raw_data = super().get_cloud_save(get_object_id=get_object_id)
-            cloud_save = raw_data["results"][0]["cloudSave"]
-        if save_path is not None:
-            save_data_to_file(raw_data, save_path)
+                object_id = self.user_profile["objectID"]
+        cloud_save = raw_data["results"][0]["cloudSave"]
+            
+        save_dir = config.DATA_DIR / "rotaeno" / object_id / "cloud_save"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_data_to_file(raw_data, save_dir / time.time())
         
         user_data = cloud_save["data"]["data"]
         favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
@@ -226,62 +235,57 @@ class Processor(UserAPI):
                 song_data["level"] = song_level
                 song_datas.append(song_data)
         
-        if add_to_database:
-            object_id = self.user_profile.get("objectID", "")
-            if self.user_profile["serverCode"].startswith("friend_"):
-                object_id = f"{self.user_profile['serverCode']}_{self.user_profile['shortID'].lower()}"
-            if object_id == "":
-                print("Why the objectID is empty, this data will not be added to the player data")
-            else:
-                timestamp = datetime.now()
-                
-                player = player_data_database.Player(
-                    object_id=object_id,
-                    name=player_info["displayName"],
-                    rating=player_info["rating"],
-                    exp=player_info["exp"],
-                    level=player_info["level"],
-                    all_perfect_plus=player_info["playRecords"]["TotalApp"],
-                    all_perfect=player_info["playRecords"]["TotalAp"],
-                    full_combo=player_info["playRecords"]["TotalFc"],
-                    miss=player_info["playRecords"]["Miss"],
-                    good=player_info["playRecords"]["Good"],
-                    perfect=player_info["playRecords"]["Perfect"],
-                    perfect_plus=player_info["playRecords"]["PerfectPlus"],
-                    play_record=player_info["playRecords"]
-                )
-                player_data_database.player_data.add_player(player=player, timestamp=timestamp)
-                
-                for song_data in song_datas:
-                    player_song_score = player_song_data_database.PlayerSongScore(
-                        object_id=object_id,
-                        difficulty=song_data["level"],
-                        score=song_data["score"],
-                        rating=song_data["ratingMix"]
-                    )
-                    
-                    player_song_data_database.player_song_score_manager.get_song_data(song_data["id"]).add_score(player_song_score)
+        timestamp = datetime.now()
+        
+        player = player_data_database.Player(
+            object_id=object_id,
+            name=player_info["displayName"],
+            rating=player_info["rating"],
+            exp=player_info["exp"],
+            level=player_info["level"],
+            all_perfect_plus=player_info["playRecords"]["TotalApp"],
+            all_perfect=player_info["playRecords"]["TotalAp"],
+            full_combo=player_info["playRecords"]["TotalFc"],
+            miss=player_info["playRecords"]["Miss"],
+            good=player_info["playRecords"]["Good"],
+            perfect=player_info["playRecords"]["Perfect"],
+            perfect_plus=player_info["playRecords"]["PerfectPlus"],
+            play_record=player_info["playRecords"]
+        )
+        player_data_database.player_data.add_player(player=player, timestamp=timestamp)
+        
+        for song_data in song_datas:
+            player_song_score = player_song_data_database.PlayerSongScore(
+                object_id=object_id,
+                difficulty=song_data["level"],
+                score=song_data["score"],
+                rating=song_data["ratingMix"]
+            )
+            
+            player_song_data_database.player_song_score_manager.get_song_data(song_data["id"]).add_score(player_song_score)
         
         return {
             "playerInfo": player_info,
             "songDatas": song_datas
         }
     
-    def get_user_data(self, raw_data: dict = None, save_path: str = None) -> dict:
-        if raw_data:
-            user_data = raw_data
+    def get_user_data(self) -> dict:
+        if self.user_profile["serverCode"].startswith("friend_"):
+            followee_data = self.get_followee_data(short_id=self.user_profile["shortID"], raw_data=self.follow_user(short_id=self.user_profile["shortID"]))
+            self.unfollow_user(short_id=self.user_profile["shortID"])
+            raw_data = self.followee_data_to_user_data_raw_data_format(followee_data=followee_data)
+            
+            object_id = f"{self.user_profile['serverCode']}_{self.user_profile['shortID']}"
         else:
-            if self.user_profile["serverCode"].startswith("friend_"):
-                followee_data = self.get_followee_data(short_id=self.user_profile["shortID"], raw_data=self.follow_user(short_id=self.user_profile["shortID"]))
-                self.unfollow_user(short_id=self.user_profile["shortID"])
-                raw_data = self.followee_data_to_user_data_raw_data_format(followee_data=followee_data)
-            else:
-                raw_data = super().get_user_data()
-            user_data = raw_data
+            raw_data = super().get_user_data()
+            
+            object_id = self.user_profile["objectID"]
+        user_data = raw_data
         if user_data.get("privateSocialData", None) is None:
             raise ValueError("privateSocialData not found in user data, cannot process user data")
-        if save_path is not None:
-            save_data_to_file(raw_data, save_path)
+        save_dir = config.DATA_DIR / "rotaeno" / object_id / "user_data"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_data_to_file(raw_data, save_dir / time.time())
         
         i = 0
         ii = 0
@@ -321,7 +325,7 @@ class Processor(UserAPI):
             "playerUserID": user_data["authData"]["xdg"]["detail"]["userId"]
         }
     
-    def get_followee_data(self, short_id: str = None, raw_data: dict = None, save_path: str = None) -> dict | list[dict]:
+    def get_followee_data(self, short_id: str = None) -> dict | list[dict]:
         def processing_followee_data(user_data):
             i = 0
             ii = 0
@@ -372,13 +376,13 @@ class Processor(UserAPI):
                 "songScores": score_datas
             }
         
-        if raw_data:
-            follow_data = raw_data["result"]["socialDatas"]
-        else:
-            raw_data = super().get_followee_data()
-            follow_data = raw_data["result"]["socialDatas"]
-        if save_path is not None:
-            save_data_to_file(raw_data, save_path)
+        raw_data = super().get_followee_data()
+        follow_data = raw_data["result"]["socialDatas"]
+        
+        object_id = self.user_profile["objectID"]
+        save_dir = config.DATA_DIR / "rotaeno" / object_id / "followee_data"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_data_to_file(raw_data, save_dir / time.time())
         
         if short_id is not None:
             for user_data in follow_data:

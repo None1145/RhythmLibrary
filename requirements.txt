@@ -1,0 +1,11 @@
+requests
+
+curlify
+msgpack
+pydantic
+sqlalchemy
+pycryptodome
+Pillow
+playwright
+qrcode
+

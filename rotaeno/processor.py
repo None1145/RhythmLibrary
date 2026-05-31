@@ -2,6 +2,7 @@ from . import api
 from . import utils
 from . import database
 
+from functools import lru_cache
 import os
 import time
 import json
@@ -18,13 +19,21 @@ USER_DATAS_DIR = os.path.join(SAVES_DIR, "user_datas")
 FOLLOWEE_DATAS_DIR = os.path.join(SAVES_DIR, "followee_datas")
 
 LOCALES_DIR = os.path.join(ASSETS_DIR, "i18n")
-LOCALES = {}
-for locale_file in os.listdir(LOCALES_DIR):
-    with open(os.path.join(LOCALES_DIR, locale_file), "r", encoding="utf-8") as f:
-        LOCALES[locale_file.split(".")[0]] = json.load(f)
+@lru_cache(maxsize=1)
+def _load_locales() -> dict:
+    locales: dict = {}
+    if not os.path.isdir(LOCALES_DIR):
+        return locales
+    for locale_file in os.listdir(LOCALES_DIR):
+        if not locale_file.endswith(".json"):
+            continue
+        with open(os.path.join(LOCALES_DIR, locale_file), "r", encoding="utf-8") as f:
+            locales[locale_file.split(".")[0]] = json.load(f)
+    return locales
 
 def t(locale="zh-CN"):
-    return LOCALES.get(str(locale), LOCALES.get("zh-CN", {}))
+    locales = _load_locales()
+    return locales.get(str(locale), locales.get("zh-CN", {}))
 
 def get_api_processor(user_profile: dict) -> api.processor.Processor:
     if user_profile["serverCode"] == "cn": region = api.model.ServerRegion.CN

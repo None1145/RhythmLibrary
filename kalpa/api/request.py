@@ -1,15 +1,24 @@
-import time
-import json
-import hashlib
+from __future__ import annotations
+
 import requests
-from .model import *
+
+from .model import ServerType, ServerURL
 
 class BaseAPI:
-    def __init__(self, server: ServerType, client_version: int, user_profile: dict, proxies: dict = None) -> None:
+    def __init__(
+        self,
+        server: ServerType,
+        client_version: int,
+        user_profile: dict,
+        proxies: dict | None = None,
+        *,
+        verify_ssl: bool = False,
+    ) -> None:
         self.server = server
         self.client_version = client_version
         self.user_profile = user_profile
         self.proxies = proxies
+        self.verify_ssl = verify_ssl
 
         if server == ServerType.MOBILE:
             self.base_url = ServerURL.MOBILE
@@ -31,7 +40,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             params=params,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def post(self, endpoint: str, data: dict = None, need_token: bool = True) -> dict:
@@ -41,7 +53,10 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
     def put(self, endpoint: str, data: dict = None, need_token: bool = True) -> dict:
@@ -51,12 +66,28 @@ class BaseAPI:
             f"{self.base_url}/{endpoint}",
             headers=self._build_headers(),
             json=data,
-            allow_redirects=True, proxies=self.proxies, timeout=10, verify=False
+            allow_redirects=True,
+            proxies=self.proxies,
+            timeout=10,
+            verify=self.verify_ssl,
         ).json()
 
 class MobileUserAPI(BaseAPI):
-    def __init__(self, client_version: int, user_profile: dict, proxies: dict = None):
-        super().__init__(server=ServerType.MOBILE, client_version=client_version, user_profile=user_profile, proxies=proxies)
+    def __init__(
+        self,
+        client_version: int,
+        user_profile: dict,
+        proxies: dict | None = None,
+        *,
+        verify_ssl: bool = False,
+    ):
+        super().__init__(
+            server=ServerType.MOBILE,
+            client_version=client_version,
+            user_profile=user_profile,
+            proxies=proxies,
+            verify_ssl=verify_ssl,
+        )
     
     def login(self) -> dict:
         data = {
