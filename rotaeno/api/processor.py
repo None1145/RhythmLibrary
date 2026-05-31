@@ -3,10 +3,10 @@ from ..database import player_data as player_data_database
 from ..database import player_song_data as player_song_data_database
 from .request import UserAPI
 
+from ...common import utils
 from ...common import config
 
 import time
-import msgpack
 from typing import Tuple, Any
 from datetime import datetime
 from datetime import timedelta
@@ -87,12 +87,6 @@ def calculate_song_rating(song_score, rating_real, song_is_cleared) -> Tuple[flo
     
     return song_rating, next_point_score
 
-def save_data_to_file(data: dict, save_path: str) -> None:
-    if not save_path.endswith(".msgpack"):
-        save_path += ".msgpack"
-    with open(save_path, "wb") as f:
-        msgpack.dump(data, f)
-
 def find_keys_in_any_dict(any_dict: dict, keys: list, default: Any = None) -> Any:
     for key in keys:
         if key in any_dict:
@@ -133,7 +127,7 @@ class Processor(UserAPI):
             
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "cloud_save"
         save_dir.mkdir(parents=True, exist_ok=True)
-        save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / time.time())
         
         user_data = cloud_save["data"]["data"]
         favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
@@ -285,7 +279,7 @@ class Processor(UserAPI):
             raise ValueError("privateSocialData not found in user data, cannot process user data")
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "user_data"
         save_dir.mkdir(parents=True, exist_ok=True)
-        save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / time.time())
         
         i = 0
         ii = 0
@@ -382,7 +376,7 @@ class Processor(UserAPI):
         object_id = self.user_profile["objectID"]
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "followee_data"
         save_dir.mkdir(parents=True, exist_ok=True)
-        save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / time.time())
         
         if short_id is not None:
             for user_data in follow_data:
