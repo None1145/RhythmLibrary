@@ -101,7 +101,7 @@ class ClientAPI(BaseAPI):
             return False
         return True
     
-    def _check_verify_code(verify_code: int | str) -> bool:
+    def _check_verify_code(self, verify_code: int | str) -> bool:
         try:
             return 99999 < int(verify_code) and int(verify_code) < 1000000
         except: ...
