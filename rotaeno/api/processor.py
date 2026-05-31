@@ -3,7 +3,7 @@ from ..database import player_data as player_data_database
 from ..database import player_song_data as player_song_data_database
 from .request import UserAPI
 
-from common import config
+from ...common import config
 
 import time
 import msgpack
