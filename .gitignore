@@ -3,3 +3,4 @@
 **/*.pyo
 **/*.png
 **/.pytest_cache
+**/data/
