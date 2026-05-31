@@ -83,7 +83,7 @@ class BaseAPI:
             decrypted = cipher.decrypt(base64.b64decode(response))
             decrypted = Crypto.Util.Padding.unpad(decrypted, Crypto.Cipher.AES.block_size)
             return decrypted.decode()
-        except ...:
+        except:
             return None
     
     def decode(self, response: requests.Response | str) -> dict | None:
