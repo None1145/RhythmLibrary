@@ -31,7 +31,7 @@ class BaseAPI:
     
     def _build_headers(self, client: bool = False) -> dict:
         token = self.user_profile.get("token", None)
-        identity = self.user_profile.get(self.identity, None)
+        identity = self.user_profile.get("identity", None)
         if not client and token is None:
             raise ValueError("Token not found")
         elif not client and identity is None:
