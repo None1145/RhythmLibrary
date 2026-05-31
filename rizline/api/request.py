@@ -110,7 +110,7 @@ class ClientAPI(BaseAPI):
     def check_identity(self, identity: str) -> bool:
         assert self._check_identity(identity=identity), "Invalid identity"
         
-        response = self.post(endpoint=f"account/{self.identity}", data={self.identity: identity}, client=True)
+        response = self.post(endpoint=f"account/check_{self.identity}", data={self.identity: identity}, client=True)
         if response.status_code != 200:
             return False
         
