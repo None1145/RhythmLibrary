@@ -127,7 +127,7 @@ class Processor(UserAPI):
             
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "cloud_save"
         save_dir.mkdir(parents=True, exist_ok=True)
-        utils.save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / str(time.time()))
         
         user_data = cloud_save["data"]["data"]
         favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
@@ -279,7 +279,7 @@ class Processor(UserAPI):
             raise ValueError("privateSocialData not found in user data, cannot process user data")
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "user_data"
         save_dir.mkdir(parents=True, exist_ok=True)
-        utils.save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / str(time.time()))
         
         i = 0
         ii = 0
@@ -376,7 +376,7 @@ class Processor(UserAPI):
         object_id = self.user_profile["objectID"]
         save_dir = config.DATA_DIR / "rotaeno" / object_id / "followee_data"
         save_dir.mkdir(parents=True, exist_ok=True)
-        utils.save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / str(time.time()))
         
         if short_id is not None:
             for user_data in follow_data:

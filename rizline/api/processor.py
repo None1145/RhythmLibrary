@@ -13,6 +13,6 @@ class Processor(UserAPI):
         
         save_dir = config.DATA_DIR / "rizline" / user_id / "data"
         save_dir.mkdir(parents=True, exist_ok=True)
-        utils.save_data_to_file(raw_data, save_dir / time.time())
+        utils.save_data_to_file(raw_data, save_dir / str(time.time()))
         
         return raw_data
