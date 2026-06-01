@@ -350,7 +350,7 @@ class Processor(UserAPI):
                     batch_metadata.append((song_id, level, record, song_data, level_index))
                 except:
                     continue
-        song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared)
+        _song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared)
         song_completion_points = calculate_completion_points(batch_ratings_real, song_ratings, batch_scores, batch_status)
         
         song_ratings = {}
@@ -358,8 +358,8 @@ class Processor(UserAPI):
             if song_id not in song_ratings:
                 song_ratings[song_id] = {}
             song_ratings[song_id][level] = {
-                "songRatingMix": song_ratings[i],
-                "songRating": song_ratings[i],
+                "songRatingMix": _song_ratings[i],
+                "songRating": _song_ratings[i],
                 "songScore": batch_scores[i],
                 "songName": song_info["title"],
                 "songStatus": record["levels"][level]["Flag"],
