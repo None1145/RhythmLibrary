@@ -350,7 +350,7 @@ class Processor(UserAPI):
                     batch_metadata.append((song_id, level, record, song_data, level_index))
                 except:
                     continue
-        song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared, player_version)
+        song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared)
         song_completion_points = calculate_completion_points(batch_ratings_real, song_ratings, batch_scores, batch_status)
         
         song_ratings = {}
