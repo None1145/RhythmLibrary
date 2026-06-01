@@ -114,7 +114,7 @@ class ClientAPI(BaseAPI):
         if response.status_code != 200:
             return False
         
-        return response.json().get("code", 0) == 1
+        return response.json().get("code", 0) != 2
     
     def verify_identity(self, identity: str) -> bool:
         assert self._check_identity(identity=identity), "Invalid identity"
