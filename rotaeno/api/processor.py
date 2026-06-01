@@ -399,12 +399,12 @@ class Processor(UserAPI):
             regular_cps = []
             for lvl_name, weight in weight_map.items():
                 if lvl_name in levels:
-                    single_cp = levels[lvl_name].get("songCompletionPoint", 0)
+                    single_cp = levels[lvl_name].get("completion", 0)
                     regular_cps.append(single_cp * weight)
             cp_regular = max(regular_cps) if regular_cps else 0.0
             cp_iva = 0.0
             if "IV_Alpha" in levels:
-                cp_iva = levels["IV_Alpha"].get("songCompletionPoint", 0) * 1.0
+                cp_iva = levels["IV_Alpha"].get("completion", 0) * 1.0
             cp_song = cp_regular + cp_iva
             completion_point += cp_song
         
