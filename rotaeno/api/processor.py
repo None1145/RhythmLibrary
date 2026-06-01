@@ -288,36 +288,36 @@ class Processor(UserAPI):
         player_version = packaging.version.Version(player_version)
         
         user_data = cloud_save["data"]["data"]
-        favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
-        song_records = user_data["songs"]["songs"]
-        display_name = user_data["profile"]["DisplayName"]
-        avatar = user_data["badges"]["EquippedBadgeId"] if "boss" not in user_data["badges"]["EquippedBadgeId"] else user_data["badges"]["EquippedBadgeId"] + "-4"
-        background = user_data["collectable-background"]["EquippedBackgroundId"].replace("background_", "")
-        character = user_data["collectable-character"]["EquippedCharacterId"].replace("character_", "") if user_data["collectable-character"]["EquippedCharacterId"] is not None else "ilot"
+        player_favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
+        player_song_records = user_data["songs"]["songs"]
+        player_display_name = user_data["profile"]["DisplayName"]
+        player_avatar = user_data["badges"]["EquippedBadgeId"] if "boss" not in user_data["badges"]["EquippedBadgeId"] else user_data["badges"]["EquippedBadgeId"] + "-4"
+        player_background = user_data["collectable-background"]["EquippedBackgroundId"].replace("background_", "")
+        player_character = user_data["collectable-character"]["EquippedCharacterId"].replace("character_", "") if user_data["collectable-character"]["EquippedCharacterId"] is not None else "ilot"
         if user_data["collectable-character"].get("chars", None) is not None:
-            if user_data["collectable-character"]["chars"].get(character, {"equipForm": None}) is not None:
-                character += f"_{user_data['collectable-character']['chars'][character]['equipForm']}"
-        total_play_time = [float(time) for time in cloud_save["TotalPlayTime"].replace("-", "").split(":")]
-        total_play_time_delta = timedelta(hours=total_play_time[0], minutes=total_play_time[1], seconds=total_play_time[2])
-        total_play_time = format_duration_en(total_play_time_delta)
-        play_records = user_data["playRecords"]
-        exp = user_data["PlayerLevel"]["AccumXp"]
-        level = calculate_level(exp)
+            if user_data["collectable-character"]["chars"].get(player_character, {"equipForm": None}) is not None:
+                player_character += f"_{user_data['collectable-character']['chars'][player_character]['equipForm']}"
+        player_total_play_time = [float(time) for time in cloud_save["TotalPlayTime"].replace("-", "").split(":")]
+        player_total_play_time_delta = timedelta(hours=total_play_time[0], minutes=total_play_time[1], seconds=total_play_time[2])
+        player_total_play_time = format_duration_en(total_play_time_delta)
+        player_play_records = user_data["playRecords"]
+        player_exp = user_data["PlayerLevel"]["AccumXp"]
+        player_level = calculate_level(exp)
         try: 
-            collectible_avatars = {i.replace("badge_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "badge_" in i}
-            collectible_characters = {i.replace("character_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "character_" in i}
-            collectible_backgrounds = {i.replace("background_", ""): user_data["collectables"]["Saves"][i]["Amount"] != 0 for i in user_data["collectables"]["Saves"] if "background_" in i and "background_cg" not in i}
-            collectible_cgs = {i.replace("background_cg-", ""): user_data["collectables"]["Saves"][i]["Amount"] != 0 for i in user_data["collectables"]["Saves"] if "background_" in i and "background_cg" in i}
+            player_collectible_avatars = {i.replace("badge_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "badge_" in i}
+            player_collectible_characters = {i.replace("character_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "character_" in i}
+            player_collectible_backgrounds = {i.replace("background_", ""): user_data["collectables"]["Saves"][i]["Amount"] != 0 for i in user_data["collectables"]["Saves"] if "background_" in i and "background_cg" not in i}
+            player_collectible_cgs = {i.replace("background_cg-", ""): user_data["collectables"]["Saves"][i]["Amount"] != 0 for i in user_data["collectables"]["Saves"] if "background_" in i and "background_cg" in i}
         except KeyError:
-            collectible_avatars = {}
-            collectible_characters = {}
-            collectible_backgrounds = {}
-            collectible_cgs = {}
-        collectibles = {
-            "avatar": collectible_avatars,
-            "character": collectible_characters,
-            "background": collectible_backgrounds,
-            "cg": collectible_cgs
+            player_collectible_avatars = {}
+            player_collectible_characters = {}
+            player_collectible_backgrounds = {}
+            player_collectible_cgs = {}
+        player_collectibles = {
+            "avatar": player_collectible_avatars,
+            "character": player_collectible_characters,
+            "background": player_collectible_backgrounds,
+            "cg": player_collectible_cgs
         }
         
         level_map = {"I": 0, "II": 1, "III": 2, "IV": 3, "IV_Alpha": 4}
@@ -326,7 +326,7 @@ class Processor(UserAPI):
         batch_is_cleared = []
         batch_status = []
         batch_metadata = []
-        for song_id, record in song_records.items():
+        for song_id, record in player_song_records.items():
             for level, level_index in level_map.items():
                 if level not in record["levels"]:
                     continue
@@ -410,18 +410,18 @@ class Processor(UserAPI):
             completion_point += cp_song
         
         player_info = {
-            "displayName": display_name,
+            "displayName": player_display_name,
             "rating": rating,
-            "exp": exp,
+            "exp": player_exp,
             "level": level,
-            "avatar": avatar,
-            "background": background,
-            "character": character,
+            "avatar": player_avatar,
+            "background": player_background,
+            "character": player_character,
             "completion": completion_point,
-            "totalPlayTime": total_play_time,
-            "favoriteSongIDs": favorite_song_ids,
-            "collectibles": collectibles,
-            "playRecords": play_records
+            "totalPlayTime": player_total_play_time,
+            "favoriteSongIDs": player_favorite_song_ids,
+            "collectibles": player_collectibles,
+            "playRecords": player_play_records
         }
 
         song_datas = []
