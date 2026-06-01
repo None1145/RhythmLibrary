@@ -351,7 +351,7 @@ class Processor(UserAPI):
                 except:
                     continue
         _song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared)
-        song_completion_points = calculate_completion_points(batch_ratings_real, song_ratings, batch_scores, batch_status)
+        song_completion_points = calculate_completion_points(batch_ratings_real, _song_ratings, batch_scores, batch_status)
         
         song_ratings = {}
         for i, (song_id, level, record, song_info, level_index) in enumerate(batch_metadata):
@@ -376,16 +376,16 @@ class Processor(UserAPI):
         
         for song_id, levels in song_ratings.items():
             if "IV_Alpha" in levels and "IV" in levels:
-                if levels["IV_Alpha"]["ratingMix"] >= levels["IV"]["ratingMix"]:
-                    levels["IV"]["ratingMix"] = 0
+                if levels["IV_Alpha"]["songRatingMix"] >= levels["IV"]["songRatingMix"]:
+                    levels["IV"]["songRatingMix"] = 0
                 else:
-                    levels["IV_Alpha"]["ratingMix"] = 0
+                    levels["IV_Alpha"]["songRatingMix"] = 0
                 song_ratings[song_id] = levels
 
         all_ratings = []
         for levels in song_ratings.values():
             for data in levels.values():
-                all_ratings.append(data["ratingMix"])
+                all_ratings.append(data["songRatingMix"])
         all_ratings.sort(reverse=True)
         
         rating = (sum(all_ratings[:10]) * 0.6 / 10) + (sum(all_ratings[10:20]) * 0.2 / 10) + (sum(all_ratings[20:40]) * 0.2 / 20)
