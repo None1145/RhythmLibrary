@@ -4,3 +4,6 @@
 **/*.png
 **/.pytest_cache
 **/data/
+**/*.db
+**/*.db-journal
+**/*.msgpack
