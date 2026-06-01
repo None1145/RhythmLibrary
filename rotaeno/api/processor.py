@@ -298,11 +298,11 @@ class Processor(UserAPI):
             if user_data["collectable-character"]["chars"].get(player_character, {"equipForm": None}) is not None:
                 player_character += f"_{user_data['collectable-character']['chars'][player_character]['equipForm']}"
         player_total_play_time = [float(time) for time in cloud_save["TotalPlayTime"].replace("-", "").split(":")]
-        player_total_play_time_delta = timedelta(hours=total_play_time[0], minutes=total_play_time[1], seconds=total_play_time[2])
-        player_total_play_time = format_duration_en(total_play_time_delta)
+        player_total_play_time_delta = timedelta(hours=player_total_play_time[0], minutes=player_total_play_time[1], seconds=player_total_play_time[2])
+        player_total_play_time = format_duration_en(player_total_play_time_delta)
         player_play_records = user_data["playRecords"]
         player_exp = user_data["PlayerLevel"]["AccumXp"]
-        player_level = calculate_level(exp)
+        player_level = calculate_level(player_exp)
         try: 
             player_collectible_avatars = {i.replace("badge_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "badge_" in i}
             player_collectible_characters = {i.replace("character_", ""): user_data["missions"]["missions"]["data"][i]["completed"] for i in user_data["missions"]["missions"]["data"] if "character_" in i}
@@ -413,7 +413,7 @@ class Processor(UserAPI):
             "displayName": player_display_name,
             "rating": rating,
             "exp": player_exp,
-            "level": level,
+            "level": player_level,
             "avatar": player_avatar,
             "background": player_background,
             "character": player_character,
