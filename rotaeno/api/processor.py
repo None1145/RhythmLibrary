@@ -366,11 +366,12 @@ class Processor(UserAPI):
                 "status": record["levels"][level]["Flag"],
                 "isCleared": batch_is_cleared[i],
                 "nextPointScore": song_next_score[i],
-                "isFavorite": song_id in player_favorite_song_ids
+                "isFavorite": song_id in player_favorite_song_ids,
+                "artist": song_info["artist"]
             }
             if song_id in Config.REMOVED_SONGS and player_version >= Config.REMOVED_SONGS[song_id]:
                 song_completion_points[i] = 0
-            song_ratings[song_id][level]["songCompletionPoint"] = song_completion_points[i]
+            song_ratings[song_id][level]["completion"] = song_completion_points[i]
         
         for song_id, levels in song_ratings.items():
             if "IV_Alpha" in levels and "IV" in levels:
