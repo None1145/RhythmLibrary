@@ -36,7 +36,7 @@ def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = Fa
     
     if just_html: return html
     
-    return utils.render_html_to_jpg(window_size=(1600, 1350), html=html)
+    return utils.render_html_to_jpg(window_size=(1400, 600), html=html)
 
 def get_song(user_profile: dict, song_id: str, just_data: bool = False, just_html: bool = False) -> str | dict:
     user_data = get_api_processor(user_profile).get_cloud_save()
