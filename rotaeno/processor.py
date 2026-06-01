@@ -18,23 +18,6 @@ CLOUD_SAVES_DIR = os.path.join(SAVES_DIR, "cloud_saves")
 USER_DATAS_DIR = os.path.join(SAVES_DIR, "user_datas")
 FOLLOWEE_DATAS_DIR = os.path.join(SAVES_DIR, "followee_datas")
 
-LOCALES_DIR = os.path.join(ASSETS_DIR, "i18n")
-@lru_cache(maxsize=1)
-def _load_locales() -> dict:
-    locales: dict = {}
-    if not os.path.isdir(LOCALES_DIR):
-        return locales
-    for locale_file in os.listdir(LOCALES_DIR):
-        if not locale_file.endswith(".json"):
-            continue
-        with open(os.path.join(LOCALES_DIR, locale_file), "r", encoding="utf-8") as f:
-            locales[locale_file.split(".")[0]] = json.load(f)
-    return locales
-
-def t(locale="zh-CN"):
-    locales = _load_locales()
-    return locales.get(str(locale), locales.get("zh-CN", {}))
-
 def get_api_processor(user_profile: dict) -> api.processor.Processor:
     if user_profile["serverCode"] == "cn": region = api.model.ServerRegion.CN
     elif user_profile["serverCode"] == "global": region = api.model.ServerRegion.GLOBAL
@@ -49,10 +32,7 @@ def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = Fa
     if just_data: return user_data["songDatas"]
     
     with open(f"{ASSETS_DIR}/html/b40.html", "r", encoding="utf-8") as f:
-        html = SafeTemplate(f.read()).safe_substitute({
-            "data": json.dumps(user_data, indent=4, ensure_ascii=False),
-            **t(user_profile.get("locale", "zh-CN"))
-        })
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(user_data, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     
@@ -72,10 +52,7 @@ def get_song(user_profile: dict, song_id: str, just_data: bool = False, just_htm
     if just_data: return user_data["songData"]
     
     with open(f"{ASSETS_DIR}/html/song.html", "r", encoding="utf-8") as f:
-        html = SafeTemplate(f.read()).safe_substitute({
-            "data": json.dumps(user_data, indent=4, ensure_ascii=False),
-            **t(user_profile.get("locale", "zh-CN"))
-        })
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(user_data, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     
@@ -97,10 +74,7 @@ def get_song_status(user_profile: dict, song_status: str, just_data: bool = Fals
     if just_data: return user_data["songDatas"]
     
     with open(f"{ASSETS_DIR}/html/song_status.html", "r", encoding="utf-8") as f:
-        html = SafeTemplate(f.read()).safe_substitute({
-            "data": json.dumps(user_data, indent=4, ensure_ascii=False),
-            **t(user_profile.get("locale", "zh-CN"))
-        })
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(user_data, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     
@@ -128,10 +102,7 @@ def get_song_rtr(user_profile: dict, song_level_num_range: tuple = (12.5, 1145),
     if just_data: return user_data["songDatas"]
     
     with open(f"{ASSETS_DIR}/html/song_rtr.html", "r", encoding="utf-8") as f:
-        html = SafeTemplate(f.read()).safe_substitute({
-            "data": json.dumps(user_data, indent=4, ensure_ascii=False),
-            **t(user_profile.get("locale", "zh-CN"))
-        })
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(user_data, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     
