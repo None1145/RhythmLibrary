@@ -358,17 +358,15 @@ class Processor(UserAPI):
             if song_id not in song_ratings:
                 song_ratings[song_id] = {}
             song_ratings[song_id][level] = {
-                "songRatingMix": _song_ratings[i],
-                "songRating": _song_ratings[i],
-                "songScore": batch_scores[i],
-                "songName": song_info["title"],
-                "songStatus": record["levels"][level]["Flag"],
-                "songNextPointScore": song_next_score[i],
-                "songIsCleared": batch_is_cleared[i],
-                "songLevelNum": batch_ratings_real[i],
-                "songLevelName": level,
-                "songRecord": record,
-                "songInfo": song_info
+                "title": song_info["title"],
+                "diff": batch_ratings_real[i],
+                "rating": _song_ratings[i],
+                "ratingMix": _song_ratings[i],
+                "score": batch_scores[i],
+                "status": record["levels"][level]["Flag"],
+                "isCleared": batch_is_cleared[i],
+                "nextPointScore": song_next_score[i],
+                "isFavorite": song_id in player_favorite_song_ids
             }
             if song_id in Config.REMOVED_SONGS and player_version >= Config.REMOVED_SONGS[song_id]:
                 song_completion_points[i] = 0
@@ -376,16 +374,16 @@ class Processor(UserAPI):
         
         for song_id, levels in song_ratings.items():
             if "IV_Alpha" in levels and "IV" in levels:
-                if levels["IV_Alpha"]["songRatingMix"] >= levels["IV"]["songRatingMix"]:
-                    levels["IV"]["songRatingMix"] = 0
+                if levels["IV_Alpha"]["ratingMix"] >= levels["IV"]["ratingMix"]:
+                    levels["IV"]["ratingMix"] = 0
                 else:
-                    levels["IV_Alpha"]["songRatingMix"] = 0
+                    levels["IV_Alpha"]["ratingMix"] = 0
                 song_ratings[song_id] = levels
 
         all_ratings = []
         for levels in song_ratings.values():
             for data in levels.values():
-                all_ratings.append(data["songRatingMix"])
+                all_ratings.append(data["ratingMix"])
         all_ratings.sort(reverse=True)
         
         rating = (sum(all_ratings[:10]) * 0.6 / 10) + (sum(all_ratings[10:20]) * 0.2 / 10) + (sum(all_ratings[20:40]) * 0.2 / 20)
