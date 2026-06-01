@@ -1,80 +1,122 @@
 import os
 from datetime import datetime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime
+from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
+from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Index
+from sqlalchemy.dialects.sqlite import insert
+
+
+Base = declarative_base()
+
 
 class PlayerSongScore:
-    def __init__(self, object_id: str, difficulty: str, score: int, rating: float = 0.0):
+    def __init__(self, song_id: str, object_id: str, difficulty: str, score: int, rating: float = 0.0):
+        self.song_id = song_id
         self.object_id = object_id
         self.difficulty = difficulty
         self.score = score
         self.rating = rating
 
+
+class Latest(Base):
+    __tablename__ = "player_song_latest"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    song_id = Column(String, nullable=False)
+    object_id = Column(String, nullable=False)
+    difficulty = Column(String, nullable=False)
+
+    score = Column(Integer, nullable=False)
+    rating = Column(Float, nullable=True)
+
+    __table_args__ = (
+        Index("idx_latest_unique", "song_id", "object_id", "difficulty", unique=True),
+    )
+
+
+class History(Base):
+    __tablename__ = "player_song_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    timestamp = Column(DateTime, nullable=False, index=True, default=datetime.now)
+
+    song_id = Column(String, nullable=False, index=True)
+    object_id = Column(String, nullable=False, index=True)
+    difficulty = Column(String, nullable=False)
+
+    score = Column(Integer, nullable=False)
+    rating = Column(Float, nullable=True)
+
+
 class PlayerSongData:
-    _base = declarative_base()
-
-    class Latest(_base):
-        __tablename__ = "player_song_latest"
-
-        id = Column(Integer, primary_key=True, autoincrement=True)
-        object_id = Column(String, nullable=False, index=True)
-        difficulty = Column(String, nullable=False)
-        score = Column(Integer, nullable=False)
-        rating = Column(Float, nullable=True)
-
-    class History(_base):
-        __tablename__ = "player_song_history"
-
-        id = Column(Integer, primary_key=True, autoincrement=True)
-        timestamp = Column(DateTime, nullable=False, index=True, default=lambda: datetime.now())
-        object_id = Column(String, nullable=False, index=True)
-        difficulty = Column(String, nullable=False)
-        score = Column(Integer, nullable=False)
-        rating = Column(Float, nullable=True)
-
     def __init__(self, db_path: str):
-        self.engine = create_engine(f"sqlite:///{db_path}")
-        self._base.metadata.create_all(self.engine)
-        self.session = sessionmaker(bind=self.engine)
+        self.engine = create_engine(
+            f"sqlite:///{db_path}",
+            connect_args={"check_same_thread": False}
+        )
+
+        with self.engine.connect() as conn:
+            conn.exec_driver_sql("PRAGMA journal_mode=WAL;")
+            conn.exec_driver_sql("PRAGMA synchronous=NORMAL;")
+            conn.exec_driver_sql("PRAGMA cache_size=10000;")
+
+        Base.metadata.create_all(self.engine)
+
+        self.Session = scoped_session(sessionmaker(bind=self.engine))
 
     def add_score(self, score: PlayerSongScore, timestamp: datetime = None):
-        session = self.session()
+        session = self.Session()
         try:
-            latest = self.Latest(
+            stmt = insert(Latest).values(
+                song_id=score.song_id,
                 object_id=score.object_id,
                 difficulty=score.difficulty,
                 score=score.score,
                 rating=score.rating
+            ).on_conflict_do_update(
+                index_elements=["song_id", "object_id", "difficulty"],
+                set_={
+                    "score": score.score,
+                    "rating": score.rating
+                }
             )
-            session.merge(latest)
+
+            session.execute(stmt)
 
             if timestamp is None:
                 timestamp = datetime.now()
-            history = self.History(
+
+            history = History(
                 timestamp=timestamp,
+                song_id=score.song_id,
                 object_id=score.object_id,
                 difficulty=score.difficulty,
                 score=score.score,
                 rating=score.rating
             )
+
             session.add(history)
 
             session.commit()
-        except Exception as e:
+
+        except Exception:
             session.rollback()
-            raise e
+            raise
         finally:
             session.close()
 
-    def get_latest(self, object_id: str, difficulty: str) -> dict | None:
-        session = self.session()
+    def get_latest(self, song_id: str, object_id: str, difficulty: str) -> dict | None:
+        session = self.Session()
         try:
-            row = session.query(self.Latest).filter_by(
+            row = session.query(Latest).filter_by(
+                song_id=song_id,
                 object_id=object_id,
                 difficulty=difficulty
             ).first()
+
             return None if row is None else dict(
+                song_id=row.song_id,
                 object_id=row.object_id,
                 difficulty=row.difficulty,
                 score=row.score,
@@ -83,19 +125,25 @@ class PlayerSongData:
         finally:
             session.close()
 
-    def get_history(self, object_id: str, difficulty: str, limit: int = 50) -> list[dict]:
-        session = self.session()
+    def get_history(self, song_id: str, object_id: str, difficulty: str, limit: int = 50) -> list[dict]:
+        session = self.Session()
         try:
             rows = (
-                session.query(self.History)
-                .filter_by(object_id=object_id, difficulty=difficulty)
-                .order_by(self.History.timestamp.desc())
+                session.query(History)
+                .filter_by(
+                    song_id=song_id,
+                    object_id=object_id,
+                    difficulty=difficulty
+                )
+                .order_by(History.timestamp.desc())
                 .limit(limit)
                 .all()
             )
+
             return [
                 dict(
                     timestamp=row.timestamp,
+                    song_id=row.song_id,
                     object_id=row.object_id,
                     difficulty=row.difficulty,
                     score=row.score,
@@ -106,16 +154,7 @@ class PlayerSongData:
         finally:
             session.close()
 
-class PlayerSongDataManager:
-    def __init__(self, base_dir: str):
-        self.base_dir = base_dir
-
-    def get_song_data(self, song_id: str) -> PlayerSongData:
-        db_file = os.path.join(self.base_dir, f"{song_id}.db")
-        return PlayerSongData(db_file)
-
-import os
-
 current_dir = os.path.dirname(os.path.abspath(__file__))
-os.makedirs(os.path.join(current_dir, "player_song_data"), exist_ok=True)
-player_song_score_manager = PlayerSongDataManager(os.path.join(current_dir, "player_song_data"))
+db_path = os.path.join(current_dir, "player_song.db")
+
+player_song_data = PlayerSongData(db_path)

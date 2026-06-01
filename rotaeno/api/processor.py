@@ -451,13 +451,14 @@ class Processor(UserAPI):
         
         for song_data in song_datas:
             player_song_score = player_song_data_database.PlayerSongScore(
+                song_id=song_data["id"],
                 object_id=object_id,
                 difficulty=song_data["level"],
                 score=song_data["score"],
                 rating=song_data["ratingMix"]
             )
             
-            player_song_data_database.player_song_score_manager.get_song_data(song_data["id"]).add_score(player_song_score)
+            player_song_data_database.player_song_data.add_score(player_song_score, timestamp=timestamp)
         
         return {
             "playerInfo": player_info,
