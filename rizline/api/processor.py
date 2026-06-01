@@ -42,7 +42,7 @@ class Processor(UserAPI):
         for song_data in song_datas:
             song_info = song_data_database.song_data.get_song(id=song_data["id"])
             song_data["artist"] = song_info.get("artist", "Unknown Artist")
-            song_data["diff"] = song_info.get("level", {}).get(song_data["level"], 0)
+            song_data["diff"] = song_info.get("level", {}).get(song_data["num"], 0)
             song_data["title"] = song_info.get("title", song_data["id"].split(".")[0])
         
         has_rsk_song_datas = [

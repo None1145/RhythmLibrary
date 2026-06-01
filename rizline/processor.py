@@ -18,13 +18,13 @@ def get_data(user_profile: dict) -> dict:
     return data
 
 def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
-    player_info, _, song_datas = get_api_processor(user_profile).get_login_data()
+    player_info, _, song_datas = get_api_processor(user_profile).get_data()
     best40 = song_datas[:40]
 
     if just_data: return best40
 
     with open(f"{config.ASSETS_DIR}/html/b40.html", "r", encoding="utf-8") as f:
-        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps({"playerInfo": player_info, "best40": best40}, indent=4, ensure_ascii=False)})
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps({"playerInfo": player_info, "songDatas": best40}, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     
