@@ -1,5 +1,7 @@
 from . import config
+from . import utils
 
 __all__ = [
-    "config"
+    "config",
+    "utils"
 ]

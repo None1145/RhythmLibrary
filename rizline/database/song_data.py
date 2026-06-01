@@ -66,11 +66,12 @@ class SongData:
             
             levels = session.query(self.SongLevel).filter(self.SongLevel.id == id).first()
             if not levels:
-                return {"id": id, "title": song.title}
+                return {"id": id, "title": song.title, "artist": id.replace(f"{song.title}.", "").replace(f".0", "")}
             
             return {
                 "id": id,
                 "title": song.title,
+                "artist": id.replace(f"{song.title}.", "").replace(f".0", ""),
                 "levels": levels.levels_data
             }
         finally:
