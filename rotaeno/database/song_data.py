@@ -13,6 +13,7 @@ class SongData:
         title = Column(String, nullable=False)
         artist = Column(String, nullable=False)
         duration = Column(Integer, nullable=False)
+        pack = Column(String, nullable=False)
         release = Column(String, nullable=False)
 
     class SongLevel(_Base):
@@ -33,7 +34,7 @@ class SongData:
         finally:
             session.close()
     
-    def add_song(self, id: str, title: str, artist: str, duration: int, release: str,
+    def add_song(self, id: str, title: str, artist: str, duration: int, pack: str, release: str,
                 levels: Dict[str, Dict[str, Any]], forceUpdate: bool = False) -> None:
         session = self.Session()
         try:
@@ -46,6 +47,7 @@ class SongData:
                 title=title, 
                 artist=artist,
                 duration=duration,
+                pack=pack,
                 release=release
             )
             session.merge(song)
@@ -72,12 +74,13 @@ class SongData:
             
             levels = session.query(self.SongLevel).filter(self.SongLevel.id == id).first()
             if not levels:
-                return {"id": id, "title": song.title, "artist": song.artist}
+                return {"id": id, "title": song.title, "artist": song.artist, "pack": song.pack}
             
             return {
                 "id": id,
                 "title": song.title,
                 "artist": song.artist,
+                "pack": song.pack,
                 "levels": levels.levels_data
             }
         finally:
