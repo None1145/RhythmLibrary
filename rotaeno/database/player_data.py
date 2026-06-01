@@ -10,6 +10,7 @@ class Player(BaseModel):
     name: str
     
     rating: float
+    completion: float
     
     exp: int = 0
     level: float = 1
@@ -36,6 +37,7 @@ class PlayerData:
         name = Column(String, nullable=False)
         
         rating = Column(Float, nullable=False)
+        completion = Column(Float, nullable=False)
         
         exp = Column(Integer, nullable=True)
         level = Column(Float, nullable=True)
@@ -62,6 +64,7 @@ class PlayerData:
         name = Column(String, nullable=False)
         
         rating = Column(Float, nullable=False)
+        completion = Column(Float, nullable=False)
         
         exp = Column(Integer, nullable=True)
         level = Column(Float, nullable=True)

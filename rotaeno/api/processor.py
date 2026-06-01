@@ -2,16 +2,20 @@ from ..database import song_data as song_data_database
 from ..database import player_data as player_data_database
 from ..database import player_song_data as player_song_data_database
 from .request import UserAPI
+from ..config import Config
 
 from ...common import utils
 from ...common import config
 
+import math
 import time
-from typing import Tuple, Any
+import numpy
+import packaging.version
+from typing import Tuple, Any, List
 from datetime import datetime
 from datetime import timedelta
 
-def calculate_level(xp):
+def calculate_level(xp: int) -> float:
     xp_ups = [100, 120, 140, 160, 180, 200, 220, 240, 300, 210]
     xp_ups += [220, 230, 240, 250, 260, 270, 280, 290, 300, 250]
     xp_ups += [260, 270, 280, 290, 300, 310, 320, 330, 340, 350]
@@ -26,7 +30,7 @@ def calculate_level(xp):
         level += xp / 500
     return level
 
-def calculate_xp(level):
+def calculate_xp(level: float) -> int:
     xp_ups = [100, 120, 140, 160, 180, 200, 220, 240, 300, 210]
     xp_ups += [220, 230, 240, 250, 260, 270, 280, 290, 300, 250]
     xp_ups += [260, 270, 280, 290, 300, 310, 320, 330, 340, 350]
@@ -46,36 +50,83 @@ def calculate_xp(level):
         xp += extra_fraction * 500
     return int(round(xp))
 
-def calculate_song_rating(song_score, rating_real, song_is_cleared) -> Tuple[float, float]:
+def reverse_calculate_score(song_rating: float, rating_real: float, needSmall1010000=True) -> Tuple[int, bool]:
+    diff = song_rating - rating_real
+    
+    bounds = [
+        (2**31 - 1, 3.6),
+        (1010000, 3.6),
+        (1008000, 3.4),
+        (1004000, 2.4),
+        (1000000, 2.0),
+        (980000, 1.0),
+        (950000, 0.0),
+        (900000, -1.0),
+        (800000, -2.0),
+        (700000, -3.0),
+        (600000, -4.0),
+        (500000, -5.0),
+        (0, -9999),
+        (-2**31, -9999)
+    ]
+        
+    song_score = 0
+    if diff > 3.6:
+        song_score = 1145141
+    elif song_rating <= 0.0:
+        song_score = 0
+    else:
+        for index in range(1, len(bounds)):
+            current_tier = bounds[index]
+            next_tier = bounds[index - 1] 
+            if current_tier[1] <= diff <= next_tier[1]:
+                if next_tier[1] == current_tier[1]:
+                    return current_tier[0]
+                ratio = (diff - current_tier[1]) / (next_tier[1] - current_tier[1])
+                score = current_tier[0] + ratio * (next_tier[0] - current_tier[0])
+                song_score = math.ceil(score)
+                break
+    
+    song_score = int(song_score)
+    if needSmall1010000:
+        song_score = min(1010000, int(song_score))
+    song_is_cleared = song_rating > 6
+
+    return song_score, song_is_cleared
+
+def calculate_song_rating(song_score: int, rating_real: float, song_is_cleared: bool) -> Tuple[float, int]:
     next_rating_point = 0.001
 
-    if song_score >= 1010000:
-        song_rating = rating_real + 3.7
-        next_point_score = 1010000
-    elif 1008000 <= song_score < 1010000:
-        song_rating = rating_real + 3.4 + (song_score - 1008000) / 10000
-        next_point_score = (song_rating + next_rating_point - rating_real - 3.4) * 10000 + 1008000
-    elif 1004000 <= song_score < 1008000:
-        song_rating = rating_real + 2.4 + (song_score - 1004000) / 4000
-        next_point_score = (song_rating + next_rating_point - rating_real - 2.4) * 4000 + 1004000
-    elif 1000000 <= song_score < 1004000:
-        song_rating = rating_real + 2.0 + (song_score - 1000000) / 10000
-        next_point_score = (song_rating + next_rating_point - rating_real - 2.0) * 10000 + 1000000
-    elif 980000 <= song_score < 1000000:
-        song_rating = rating_real + 1.0 + (song_score - 980000) / 20000
-        next_point_score = (song_rating + next_rating_point - rating_real - 1.0) * 20000 + 980000
-    elif 950000 <= song_score < 980000:
-        song_rating = rating_real + 0.0 + (song_score - 950000) / 30000
-        next_point_score = (song_rating + next_rating_point - rating_real - 0.0) * 30000 + 950000
-    elif 900000 <= song_score < 950000:
-        song_rating = rating_real - 1.0 + (song_score - 900000) / 50000
-        next_point_score = (song_rating + next_rating_point - rating_real + 1.0) * 50000 + 900000
-    elif 500000 <= song_score < 900000:
-        song_rating = rating_real - 5.0 + (song_score - 500000) / 100000
-        next_point_score = (song_rating + next_rating_point - rating_real + 5.0) * 100000 + 500000
-    else:
-        song_rating = 0
-        next_point_score = 500000
+    bounds = [
+        (2**31 - 1, 3.6),
+        (1010000, 3.6),
+        (1008000, 3.4),
+        (1004000, 2.4),
+        (1000000, 2.0),
+        (980000, 1.0),
+        (950000, 0.0),
+        (900000, -1.0),
+        (800000, -2.0),
+        (700000, -3.0),
+        (600000, -4.0),
+        (500000, -5.0),
+        (0, -9999),
+        (-2**31, -9999)
+    ]
+        
+    song_rating = 0
+    for index in range(len(bounds)):
+        if song_score >= bounds[index][0]:
+            if index == 0:
+                song_rating = max(rating_real + bounds[index][1], 0)
+            else:
+                current_tier = bounds[index]
+                next_tier = bounds[index - 1] 
+                ratio = (song_score - current_tier[0]) / (next_tier[0] - current_tier[0])
+                offset = current_tier[1] + ratio * (next_tier[1] - current_tier[1])
+                song_rating = max(rating_real + offset, 0)
+            break
+    next_point_score = reverse_calculate_score(song_rating + next_rating_point, rating_real, False)[0]
         
     if song_rating < 0: song_rating = 0
         
@@ -86,6 +137,110 @@ def calculate_song_rating(song_score, rating_real, song_is_cleared) -> Tuple[flo
     if next_point_score + song_score > 1010000: next_point_score = 1010000 - song_score
     
     return song_rating, next_point_score
+
+def calculate_song_ratings(song_score: numpy.ndarray | List[int], rating_real: numpy.ndarray | List[float], song_is_cleared: numpy.ndarray | List[bool]) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    song_score = numpy.array(song_score)
+    rating_real = numpy.array(rating_real)
+    song_is_cleared = numpy.array(song_is_cleared)
+    
+    song_rating = numpy.zeros_like(song_score, dtype=float)
+    next_point_score = numpy.zeros_like(song_score, dtype=float)
+    
+    next_rating_point = 0.001
+    
+    xp = numpy.array([0, 500000, 600000, 700000, 800000, 900000, 950000, 980000, 1000000, 1004000, 1008000, 1010000])
+    fp = numpy.array([-9999.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 2.4, 3.4, 3.6])
+    
+    offsets = numpy.interp(song_score, xp, fp)
+    song_rating = numpy.maximum(rating_real + offsets, 0)
+    
+    target_offsets = (song_rating + next_rating_point) - rating_real
+    next_point_score = numpy.interp(target_offsets, fp, xp)
+    
+    song_rating = numpy.maximum(song_rating, 0)
+    song_rating = numpy.where(song_is_cleared, song_rating, numpy.minimum(song_rating, 6))
+
+    next_point_score = next_point_score - song_score
+    next_point_score = numpy.clip(next_point_score, 0, 1010000 - song_score)
+
+    return song_rating, next_point_score
+
+def calculate_completion_point(diff: float, rating: float, score: int, status: str) -> float:
+    def calculate_completion_point_by_rating(diff, rating):
+        rating_max = diff + 3.6
+        return (rating / rating_max) * 0.925
+
+    def calculate_completion_point_by_score(score):
+        if score >= 1008000 and score <= 1008999:
+            return (score - 1008000) / 1000 * 0.01
+        elif score >= 1009000 and score <= 1009249:
+            progress = (score - 1009000) / 1000
+            return progress * 2 / 100 + 0.01
+        elif score >= 1009250 and score <= 1009499:
+            progress = (score - 1009250) / 1000
+            return progress * 3 / 100 + 0.015
+        elif score >= 1009500 and score <= 1009749:
+            progress = (score - 1009500) / 1000
+            return progress * 4 / 100 + 0.0225
+        elif score >= 1009750 and score <= 1009899:
+            progress = (score - 1009750) / 1000
+            return progress * 5 / 100 + 0.0325
+        elif score >= 1009900:
+            progress = (score - 1009900) / 1000
+            return progress * 10 / 100 + 0.04
+        return 0
+    
+    def claculate_completion_point_by_status(status):
+        if status == "FC":
+            return 0.01
+        elif status == "AP":
+            return 0.02
+        elif status == "APP":
+            return 0.025
+        return 0
+    
+    return min(calculate_completion_point_by_rating(diff, rating) + calculate_completion_point_by_score(score) + claculate_completion_point_by_status(status), 1)
+
+def calculate_completion_points(diff: numpy.ndarray | List[float], rating: numpy.ndarray | List[float], score: numpy.ndarray | List[int], status: numpy.ndarray | List[str]) -> numpy.ndarray:
+    diff = numpy.asanyarray(diff, dtype=float)
+    rating = numpy.asanyarray(rating, dtype=float)
+    score = numpy.asanyarray(score, dtype=float)
+    status = numpy.asanyarray(status)
+
+    rating_max = diff + 3.6
+    pt_rating = (rating / rating_max) * 0.925
+
+    conds_score = [
+        (score >= 1008000) & (score <= 1008999),
+        (score >= 1009000) & (score <= 1009249),
+        (score >= 1009250) & (score <= 1009499),
+        (score >= 1009500) & (score <= 1009749),
+        (score >= 1009750) & (score <= 1009899),
+        (score >= 1009900)
+    ]
+    
+    funcs_score = [
+        (score - 1008000) / 1000 * 0.01,
+        ((score - 1009000) / 1000) * 2 / 100 + 0.01,
+        ((score - 1009250) / 1000) * 3 / 100 + 0.015,
+        ((score - 1009500) / 1000) * 4 / 100 + 0.0225,
+        ((score - 1009750) / 1000) * 5 / 100 + 0.0325,
+        ((score - 1009900) / 1000) * 10 / 100 + 0.04
+    ]
+    
+    pt_score = numpy.select(conds_score, funcs_score, default=0.0)
+
+    conds_status = [
+        status == "FC",
+        status == "AP",
+        status == "APP"
+    ]
+    funcs_status = [0.01, 0.02, 0.025]
+    
+    pt_status = numpy.select(conds_status, funcs_status, default=0.0)
+
+    total_points = pt_rating + pt_score + pt_status
+    return numpy.minimum(total_points, 1.0)
 
 def find_keys_in_any_dict(any_dict: dict, keys: list, default: Any = None) -> Any:
     for key in keys:
@@ -129,6 +284,9 @@ class Processor(UserAPI):
         save_dir.mkdir(parents=True, exist_ok=True)
         utils.save_data_to_file(raw_data, save_dir / str(time.time()))
         
+        player_version = cloud_save.get("ClientVersion", Config.GAME_VERSION_NAME)
+        player_version = packaging.version.Version(player_version)
+        
         user_data = cloud_save["data"]["data"]
         favorite_song_ids = user_data.get("FavoriteSong", {"songIds": []})["songIds"]
         song_records = user_data["songs"]["songs"]
@@ -162,43 +320,67 @@ class Processor(UserAPI):
             "cg": collectible_cgs
         }
         
-        song_ratings = {}
-        for song_id, song_levels in song_records.items():
-            song_info = song_data_database.song_data.get_song(id=song_id)
-            song_levels = song_levels.get("levels", {})
-            if song_info == {}:
-                print(f"Song ID `{song_id}` not found in song data")
-                continue
-            for song_level, song_data in song_levels.items():
-                if song_level not in song_info["levels"]:
-                    print(f"Song level `{song_level}` not found in song data for song ID `{song_id}`")
+        level_map = {"I": 0, "II": 1, "III": 2, "IV": 3, "IV_Alpha": 4}
+        batch_scores = []
+        batch_ratings_real = []
+        batch_is_cleared = []
+        batch_status = []
+        batch_metadata = []
+        for song_id, record in song_records.items():
+            for level, level_index in level_map.items():
+                if level not in record["levels"]:
                     continue
-                song_diff = song_info["levels"][song_level]["num"]
-                song_score = song_data["Score"]
-                song_is_cleared = song_data["IsCleared"]
-                song_rating, next_point_score = calculate_song_rating(song_score, song_diff, song_is_cleared)
-                # print(song_rating, next_point_score)
-                
-                if song_ratings.get(song_id) is None: song_ratings[song_id] = {}
-                song_ratings[song_id][song_level] = {
-                    "title": song_info["title"],
-                    "diff": song_diff,
-                    "rating": song_rating,
-                    "ratingMix": song_rating,
-                    "score": song_score,
-                    "status": song_data["Flag"].upper(),
-                    "isCleared": song_is_cleared,
-                    "nextPointScore": next_point_score,
-                    "isFavorite": song_id in favorite_song_ids
-                }
+                try:
+                    song_data = song_data_database.song_data.get_song(song_id)
+                    rating_real = song_data["levels"][level]["num"]
+                    if song_id in Config.REMOVED_SONGS:
+                        if Config.REMOVED_SONGS[song_id] <= player_version:
+                            rating_real = 0
+                    if song_id in Config.CHANGE_SONGS:
+                        if Config.CHANGE_SONGS[song_id]["version"] > player_version:
+                            rating_real = Config.CHANGE_SONGS[song_id]["rating"].get(level, rating_real)
+                    song_score = int(record["levels"][level]["Score"])
+                    is_cleared = record["levels"][level]["IsCleared"]
+                    song_status = record["levels"][level]["Flag"]
+
+                    batch_scores.append(song_score)
+                    batch_ratings_real.append(rating_real)
+                    batch_is_cleared.append(is_cleared)
+                    batch_status.append(song_status)
+                    batch_metadata.append((song_id, level, record, song_data, level_index))
+                except:
+                    continue
+        song_ratings, song_next_score = calculate_song_ratings(batch_scores, batch_ratings_real, batch_is_cleared, player_version)
+        song_completion_points = calculate_completion_points(batch_ratings_real, song_ratings, batch_scores, batch_status)
         
-        for songID, levels in song_ratings.items():
+        song_ratings = {}
+        for i, (song_id, level, record, song_info, level_index) in enumerate(batch_metadata):
+            if song_id not in song_ratings:
+                song_ratings[song_id] = {}
+            song_ratings[song_id][level] = {
+                "songRatingMix": song_ratings[i],
+                "songRating": song_ratings[i],
+                "songScore": batch_scores[i],
+                "songName": song_info["title"],
+                "songStatus": record["levels"][level]["Flag"],
+                "songNextPointScore": song_next_score[i],
+                "songIsCleared": batch_is_cleared[i],
+                "songLevelNum": batch_ratings_real[i],
+                "songLevelName": level,
+                "songRecord": record,
+                "songInfo": song_info
+            }
+            if song_id in Config.REMOVED_SONGS and player_version >= Config.REMOVED_SONGS[song_id]:
+                song_completion_points[i] = 0
+            song_ratings[song_id][level]["songCompletionPoint"] = song_completion_points[i]
+        
+        for song_id, levels in song_ratings.items():
             if "IV_Alpha" in levels and "IV" in levels:
                 if levels["IV_Alpha"]["ratingMix"] >= levels["IV"]["ratingMix"]:
                     levels["IV"]["ratingMix"] = 0
                 else:
                     levels["IV_Alpha"]["ratingMix"] = 0
-                song_ratings[songID] = levels
+                song_ratings[song_id] = levels
 
         all_ratings = []
         for levels in song_ratings.values():
@@ -207,6 +389,25 @@ class Processor(UserAPI):
         all_ratings.sort(reverse=True)
         
         rating = (sum(all_ratings[:10]) * 0.6 / 10) + (sum(all_ratings[10:20]) * 0.2 / 10) + (sum(all_ratings[20:40]) * 0.2 / 20)
+        completion_point = 0
+        weight_map = {
+            "I": 0.7,
+            "II": 0.8,
+            "III": 0.9,
+            "IV": 1.0
+        }
+        for _, levels in song_ratings.items():
+            regular_cps = []
+            for lvl_name, weight in weight_map.items():
+                if lvl_name in levels:
+                    single_cp = levels[lvl_name].get("songCompletionPoint", 0)
+                    regular_cps.append(single_cp * weight)
+            cp_regular = max(regular_cps) if regular_cps else 0.0
+            cp_iva = 0.0
+            if "IV_Alpha" in levels:
+                cp_iva = levels["IV_Alpha"].get("songCompletionPoint", 0) * 1.0
+            cp_song = cp_regular + cp_iva
+            completion_point += cp_song
         
         player_info = {
             "displayName": display_name,
@@ -216,6 +417,7 @@ class Processor(UserAPI):
             "avatar": avatar,
             "background": background,
             "character": character,
+            "completion": completion_point,
             "totalPlayTime": total_play_time,
             "favoriteSongIDs": favorite_song_ids,
             "collectibles": collectibles,
@@ -235,6 +437,7 @@ class Processor(UserAPI):
             object_id=object_id,
             name=player_info["displayName"],
             rating=player_info["rating"],
+            completion=player_info["completion"],
             exp=player_info["exp"],
             level=player_info["level"],
             all_perfect_plus=player_info["playRecords"]["TotalApp"],
@@ -302,21 +505,23 @@ class Processor(UserAPI):
         
         return {
             "updateAt": user_data["updatedAt"],
-            "FriendCap": user_data["privateSocialData"]["FriendCap"],
-            "playerAvatar": user_data["privateSocialData"]["UserData"]["BadgeId"] if "boss" not in user_data["privateSocialData"]["UserData"]["BadgeId"] else user_data["privateSocialData"]["UserData"]["BadgeId"] + "-4",
-            "playerBackground": user_data["privateSocialData"]["UserData"]["BackgroundId"].replace("background_", ""),
-            "playerCharacter": user_data["privateSocialData"]["UserData"]["CharacterId"].replace("character_", "") if user_data["privateSocialData"]["UserData"]["CharacterId"] is not None else "ilot",
-            "ShowRating": user_data["privateSocialData"]["UserData"]["ShowRating"],
-            "playerExp": user_data["privateSocialData"]["UserData"]["Exp"],
-            "playerLevel": calculate_level(user_data["privateSocialData"]["UserData"]["Exp"]),
-            "playerDisplayName": user_data["privateSocialData"]["UserData"]["DisplayName"],
-            "playerRating": user_data["privateSocialData"]["UserData"]["Rating"],
+            "friendCap": user_data["privateSocialData"]["FriendCap"],
+            "avatar": user_data["privateSocialData"]["UserData"]["BadgeId"] if "boss" not in user_data["privateSocialData"]["UserData"]["BadgeId"] else user_data["privateSocialData"]["UserData"]["BadgeId"] + "-4",
+            "background": user_data["privateSocialData"]["UserData"]["BackgroundId"].replace("background_", ""),
+            "character": user_data["privateSocialData"]["UserData"]["CharacterId"].replace("character_", "") if user_data["privateSocialData"]["UserData"]["CharacterId"] is not None else "ilot",
+            "showRating": user_data["privateSocialData"]["UserData"]["ShowRating"],
+            "showCompletion": user_data["privateSocialData"]["UserData"]["ShowCompletion"],
+            "exp": user_data["privateSocialData"]["UserData"]["Exp"],
+            "level": calculate_level(user_data["privateSocialData"]["UserData"]["Exp"]),
+            "displayName": user_data["privateSocialData"]["UserData"]["DisplayName"],
+            "rating": user_data["privateSocialData"]["UserData"]["Rating"],
+            "completion": user_data["privateSocialData"]["UserData"]["CompletionPoint"],
             "createdAt": user_data["createdAt"].split("T")[0],
             "emailVerified": user_data["emailVerified"],
             "mobilePhoneVerified": user_data["mobilePhoneVerified"],
-            "playerPlayStats": playStats,
-            "playerFriendCode": user_data["shortId"].lower(),
-            "playerUserID": user_data["authData"]["xdg"]["detail"]["userId"]
+            "playStats": playStats,
+            "shortID": user_data["shortId"].lower(),
+            "userID": user_data["authData"]["xdg"]["detail"]["userId"]
         }
     
     def get_followee_data(self, short_id: str = None) -> dict | list[dict]:
@@ -358,16 +563,16 @@ class Processor(UserAPI):
                     
             return {
                 "shortID": user_data["shortId"].lower(),
-                "playerRating": user_data["rating"],
-                "playerDisplayName": user_data["displayName"],
-                "playerPlayStats": user_data["playStats"],
+                "rating": user_data["rating"],
+                "displayName": user_data["displayName"],
+                "playStats": user_data["playStats"],
                 "isFriend": user_data["isTwoWayFriend"],
-                "playerBackground": user_data["backgroundId"],
-                "playerCharacter": user_data["characterId"],
-                "playerAvatar": user_data["badgeId"],
-                "playerExp": user_data["exp"],
-                "playerLevel": calculate_level(user_data["exp"]),
-                "songScores": score_datas
+                "background": user_data["backgroundId"],
+                "character": user_data["characterId"],
+                "avatar": user_data["badgeId"],
+                "exp": user_data["exp"],
+                "level": calculate_level(user_data["exp"]),
+                "songs": score_datas
             }
         
         raw_data = super().get_followee_data()
@@ -450,7 +655,8 @@ class Processor(UserAPI):
                                 }
                             }
                         },
-                        "TotalPlayTime": "0:0:0"
+                        "TotalPlayTime": "0:0:0",
+                        "ClientVersion": Config.GAME_VERSION_NAME
                     }
                 }
             ]
@@ -474,6 +680,8 @@ class Processor(UserAPI):
                     "CharacterId": followee_data["playerCharacter"],
                     "Rating": followee_data["playerRating"],
                     "ShowRating": True,
+                    "ShowCompletion": False,
+                    "CompletionPoint": 0,
                     "Exp": calculate_xp(followee_data["playerLevel"]),
                     "DisplayName": followee_data["playerDisplayName"],
                     "SongRecords": {
