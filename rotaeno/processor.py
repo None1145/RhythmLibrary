@@ -26,7 +26,7 @@ def get_api_processor(user_profile: dict) -> api.processor.Processor:
     return api.processor.Processor(region=region, user_profile=user_profile)
 
 def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
-    user_data = get_api_processor(user_profile).get_cloud_save(save_path=os.path.join(CLOUD_SAVES_DIR, f"{user_profile.get('objectID', 'EMPTY')}-{time.time()}.msgpack"), add_to_database=True)
+    user_data = get_api_processor(user_profile).get_cloud_save()
     user_data["songDatas"] = sorted(user_data["songDatas"], key=lambda x: x["ratingMix"], reverse=True)[:40]
     
     if just_data: return user_data["songDatas"]
@@ -39,7 +39,7 @@ def get_best40(user_profile: dict, just_data: bool = False, just_html: bool = Fa
     return utils.render_html_to_jpg(window_size=(1600, 1350), html=html)
 
 def get_song(user_profile: dict, song_id: str, just_data: bool = False, just_html: bool = False) -> str | dict:
-    user_data = get_api_processor(user_profile).get_cloud_save(save_path=os.path.join(CLOUD_SAVES_DIR, f"{user_profile.get('objectID', 'EMPTY')}-{time.time()}.msgpack"), add_to_database=True)
+    user_data = get_api_processor(user_profile).get_cloud_save()
     song_artist = database.song_data.song_data.get_song(id=song_id).get("artist", "Unknown Artist")
     song_data = {}
     for song_level_data in user_data["songDatas"]:
@@ -59,7 +59,7 @@ def get_song(user_profile: dict, song_id: str, just_data: bool = False, just_htm
     return utils.render_html_to_jpg(window_size=(1360, 900), html=html)
 
 def get_song_status(user_profile: dict, song_status: str, just_data: bool = False, just_html: bool = False) -> str | dict:
-    user_data = get_api_processor(user_profile).get_cloud_save(save_path=os.path.join(CLOUD_SAVES_DIR, f"{user_profile.get('objectID', 'EMPTY')}-{time.time()}.msgpack"), add_to_database=True)
+    user_data = get_api_processor(user_profile).get_cloud_save()
     
     song_datas = []
     for song_data in user_data["songDatas"]:
@@ -81,7 +81,7 @@ def get_song_status(user_profile: dict, song_status: str, just_data: bool = Fals
     return utils.render_html_to_jpg(window_size=(1600, 1310), html=html)
 
 def get_song_rtr(user_profile: dict, song_level_num_range: tuple = (12.5, 1145), song_sort_type: str = "rating", just_data: bool = False, just_html: bool = False) -> str | dict:
-    user_data = get_api_processor(user_profile).get_cloud_save(save_path=os.path.join(CLOUD_SAVES_DIR, f"{user_profile.get('objectID', 'EMPTY')}-{time.time()}.msgpack"), add_to_database=True)
+    user_data = get_api_processor(user_profile).get_cloud_save()
     
     song_datas = []
     for song_data in user_data["songDatas"]:
