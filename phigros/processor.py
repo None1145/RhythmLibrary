@@ -39,14 +39,14 @@ def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = Fa
         if song_data not in best30_song_datas:
             best30_song_datas.append(song_data)
     
+    if just_data: return best30_song_datas
+    
     user_info = processor.get_user_info(summary=latest_summary)
     
     result = {
         "user_info": user_info,
         "song_data": best30_song_datas
     }
-    
-    if just_data: return result
 
     with open(f"{config.HTML_ASSETS_DIR}/best30.html", "r", encoding="utf-8") as f:
         html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(result, indent=4, ensure_ascii=False)})
