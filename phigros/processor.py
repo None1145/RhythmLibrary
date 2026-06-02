@@ -25,9 +25,9 @@ def get_api_processor(user_profile: dict) -> api.processor.Processor:
 def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
     processor = get_api_processor(user_profile)
     
-    latest_summary = processor.get_latest_summary(update=user_profile.get("update", False))
-    
-    song_datas = processor.get_game_record(summary=latest_summary, update=user_profile.get("update", False))
+    latest_summary = processor.get_latest_summary()
+
+    song_datas = processor.get_game_record(summary=latest_summary)
     song_datas.sort(key=lambda x: x["rating"], reverse=True)
     
     ap_song_datas = [song_data for song_data in song_datas if song_data["status"] == "AP"]
@@ -39,7 +39,7 @@ def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = Fa
         if song_data not in best30_song_datas:
             best30_song_datas.append(song_data)
     
-    user_info = processor.get_user_info(summary=latest_summary, update=user_profile.get("update", False))
+    user_info = processor.get_user_info(summary=latest_summary)
     
     result = {
         "user_info": user_info,
@@ -50,12 +50,7 @@ def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = Fa
 
     with open(f"{config.HTML_ASSETS_DIR}/best30.html", "r", encoding="utf-8") as f:
         html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(result, indent=4, ensure_ascii=False)})
-    
+
     if just_html: return html
-    
+
     return utils.render_html_to_jpg(window_size=(1100, 1350), html=html)
-
-
-# 兼容旧名称（历史版本使用 best30）
-def best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
-    return get_best30(user_profile=user_profile, just_data=just_data, just_html=just_html)
