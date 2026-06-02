@@ -1,17 +1,52 @@
 from .request import UserAPI
+from .. import config
 from ..database import song_data as song_data_database
-
-from ...common import utils
-from ...common import config as common_config
 
 import io
 import time
 import struct
 import base64
 import zipfile
+import msgpack
+import pathlib
 import datetime
 import Crypto.Cipher.AES
 import Crypto.Util.Padding
+
+original_open = open
+def save_open(file, *args, **kwargs):
+    if not pathlib.Path(file).exists():
+        pathlib.Path(file).parent.mkdir(parents=True, exist_ok=True)
+    return original_open(file, *args, **kwargs)
+open = save_open
+
+def save_data_to_file(data: bytes | dict, filename: pathlib.Path) -> None:
+    if isinstance(data, dict):
+        if not filename.suffix == ".msgpack":
+            filename = filename.with_suffix(".msgpack")
+        with open(filename, "wb") as f:
+            msgpack.dump(data, f)
+    elif isinstance(data, bytes):
+        if not filename.suffix == ".bin":
+            filename = filename.with_suffix(".bin")
+        with open(filename, "wb") as f:
+            f.write(data)
+    else:
+        raise ValueError("Data don't match any type")
+
+def load_data_from_file(filename: pathlib.Path) -> bytes | dict:
+    if filename.suffix == ".msgpack":
+        with open(filename, "rb") as f:
+            return msgpack.load(f)
+    elif filename.suffix == ".bin":
+        with open(filename, "rb") as f:
+            return f.read()
+    else:
+        raise ValueError("File extension don't match any type")
+
+def sorted_files_by_extension(directory: str, extension: str = ".msgpack") -> list:
+    files = [f for f in pathlib.Path(directory).glob(f"*{extension}")]
+    return sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)
 
 class ByteReader:
     def __init__(self, data, position=0):
@@ -117,21 +152,29 @@ class ByteReader:
 
 class Processor(UserAPI):
     def get_user_data(self) -> dict:
-        user_data = super().get_user_data()
-        save_dir = common_config.DATA_DIR / "phigros" / self.user_profile["objectID"] / "user_data"
-        utils.save_data_to_file(user_data, save_dir / str(time.time()))
-
+        sorted_files = sorted_files_by_extension(config.SAVES_DIR / self.user_profile["sessionToken"] / "user_data", extension=".msgpack")
+        
+        if update or not sorted_files:
+            user_data = super().get_user_data()
+            save_data_to_file(user_data, config.SAVES_DIR / self.user_profile["sessionToken"] / "user_data" / f"{time.time()}")
+        else:
+            user_data = load_data_from_file(sorted_files[0])
+        
         return user_data
     
     def _get_summaries(self) -> dict:
-        summaries = super().get_summaries()
-        save_dir = common_config.DATA_DIR / "phigros" / self.user_profile["objectID"] / "summaries"
-        utils.save_data_to_file(summaries, save_dir / str(time.time()))
-
+        sorted_files = sorted_files_by_extension(config.SAVES_DIR / self.user_profile["sessionToken"] / "summaries", extension=".msgpack")
+        
+        if update or not sorted_files:
+            summaries = super().get_summaries()
+            save_data_to_file(summaries, config.SAVES_DIR / self.user_profile["sessionToken"] / "summaries" / f"{time.time()}")
+        else:
+            summaries = load_data_from_file(sorted_files[0])
+        
         return summaries
     
     def _get_game_record(self, summary: dict) -> list[dict]:
-        reader = self.get_byte_reader(summary=summary, key="gameRecord")
+        reader = self.get_byte_reader(summary=summary, key="gameRecord", update=update)
         
         song_datas = []
         level_map = ["EZ", "HD", "IN", "AT"]
@@ -163,11 +206,11 @@ class Processor(UserAPI):
         return song_datas
 
     def _get_user(self, summary: dict) -> dict:
-        reader = self.get_byte_reader(summary=summary, key="user")
+        reader = self.get_byte_reader(summary=summary, key="user", update=update)
         _ = reader.get_byte()
         
         return {
-            "nickname": self.get_display_name(),
+            "nickname": self.get_display_name(update=update),
             "intro": reader.get_string(),
             "avatar": reader.get_string(),
             "background": reader.get_string(),
@@ -185,24 +228,28 @@ class Processor(UserAPI):
             iv = base64.b64decode("Kk/wisgNYwcAV8WVGMgyUw==")
             return Crypto.Util.Padding.unpad(Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv).decrypt(encoded_data), Crypto.Cipher.AES.block_size)
         
-        data = self.requests.get(
-            summary["saveURL"],
-            allow_redirects=True,
-            proxies=self.proxies,
-            timeout=10,
-            verify=self.verify_ssl,
-        ).content
-        save_dir = common_config.DATA_DIR / "phigros" / self.user_profile["objectID"] / "game_save"
-        utils.save_data_to_file(data, save_dir / str(datetime.datetime.strptime(summary["updatedAt"], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()))
-
+        sorted_files = sorted_files_by_extension(config.SAVES_DIR / self.user_profile["sessionToken"] / "save" / summary["saveKey"].split("/")[-2], extension=".bin")
+        
+        if update or not sorted_files:
+            data = self.requests.get(
+                summary["saveURL"],
+                allow_redirects=True,
+                proxies=self.proxies,
+                timeout=10,
+                verify=self.verify_ssl,
+            ).content
+            save_data_to_file(data, config.SAVES_DIR / self.user_profile["sessionToken"] / "save" / summary["saveKey"].split("/")[-2] / f"{datetime.datetime.strptime(summary['updatedAt'], '%Y-%m-%dT%H:%M:%S.%fZ').timestamp()}")
+        else:
+            data = load_data_from_file(sorted_files[0])
+        
         return ByteReader(decode(data, key))
     
     def get_display_name(self) -> str:
-        user_data = self.get_user_data()
+        user_data = self.get_user_data(update=update)
         return user_data.get("nickname", "GUEST")
 
     def get_summaries(self) -> dict:
-        results = self._get_summaries()["results"]
+        results = self._get_summaries(update=update)["results"]
         
         datas = []
         for result in results:
@@ -231,7 +278,7 @@ class Processor(UserAPI):
         return datas
     
     def get_latest_summary(self) -> dict:
-        summaries = self.get_summaries()
+        summaries = self.get_summaries(update=update)
         latest_summary = summaries[0]
 
         for summary in summaries:
@@ -242,17 +289,17 @@ class Processor(UserAPI):
     
     def get_game_record(self, summary: dict = None) -> list[dict]:
         if summary is None:
-            summary = self.get_latest_summary()
-        return self._get_game_record(summary=summary)
+            summary = self.get_latest_summary(update=update)
+        return self._get_game_record(summary=summary, update=update)
 
     def get_user(self, summary: dict = None) -> dict:
         if summary is None:
-            summary = self.get_latest_summary()
-        return self._get_user(summary=summary)
+            summary = self.get_latest_summary(update=update)
+        return self._get_user(summary=summary, update=update)
     
     def get_user_info(self, summary: dict = None) -> dict:
         if summary is None:
-            summary = self.get_latest_summary()
-        user_info = self._get_user(summary=summary)
+            summary = self.get_latest_summary(update=update)
+        user_info = self._get_user(summary=summary, update=update)
         user_info["summary"] = summary["summary"]
         return user_info

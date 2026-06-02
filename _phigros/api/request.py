@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import time
-import hashlib
 
 import curlify
 import requests
@@ -48,14 +46,10 @@ class BaseAPI:
             raise ValueError("Invalid region")
 
     def _build_headers(self) -> dict:
-        timestamp = str(int(time.time() * 1000))
-        sign_raw = f"{timestamp}{self.secret['key']}".encode("utf-8")
-        sign = hashlib.md5(sign_raw).hexdigest()
-        
         return {
-            "X-LC-Sign": f"{sign},{timestamp}",
-            "X-LC-Session": self.user_profile.get("sessionToken", ""),
             "X-LC-Id": self.secret["id"],
+            "X-LC-Key": self.secret["key"],
+            "X-LC-Session": self.user_profile.get("sessionToken", ""),
             "Content-Type": "application/json"
         }
 

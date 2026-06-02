@@ -1,31 +1,10 @@
-import os
-import pathlib
-import msgpack
-import tempfile
-
 from . import config
 
-def save_data_to_file(data: dict | bytes, save_path: str | pathlib.Path) -> None:
-    parent_dir = pathlib.Path(save_path).parent if isinstance(save_path, str) else save_path.parent
-    parent_dir.mkdir(parents=True, exist_ok=True)
-
-    if isinstance(save_path, pathlib.Path):
-        save_path = str(save_path)
-
-    if isinstance(data, dict):
-        if not save_path.endswith(".msgpack"):
-            save_path += ".msgpack"
-        with open(save_path, "wb") as f:
-            msgpack.dump(data, f)
-    elif isinstance(data, bytes):
-        if not save_path.endswith(".bin"):
-            save_path += ".bin"
-        with open(save_path, "wb") as f:
-            f.write(data)
-    else:
-        raise ValueError("Data must be dict or bytes")
+import os
+import tempfile
 
 def compress_image(image_path, max_size_mb=9.5, quality=95):
+    # PIL 为可选依赖：仅在需要图片压缩时导入
     from PIL import Image
 
     max_size_bytes = max_size_mb * 1024 * 1024
@@ -43,6 +22,7 @@ def compress_image(image_path, max_size_mb=9.5, quality=95):
                     img.save(output_path, format="WEBP", quality=quality, method=6)
                     if os.path.getsize(output_path) <= max_size_bytes: return output_path
             except Exception:
+                # webp 保存失败时退回 jpg
                 pass
             with tempfile.NamedTemporaryFile(mode='w+t', delete=False, suffix=".jpg", dir=config.TEMP_DIR) as tmp:
                 output_path = tmp.name
@@ -55,6 +35,7 @@ def compress_image(image_path, max_size_mb=9.5, quality=95):
         return output_path
 
 def render_html_to_jpg(window_size, html=None, html_path=None):
+    # playwright 为可选依赖：仅在需要渲染 HTML 时导入
     import playwright.sync_api
 
     with playwright.sync_api.sync_playwright() as p:
