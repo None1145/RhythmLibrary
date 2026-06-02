@@ -141,8 +141,7 @@ class Processor(UserAPI):
         level_map = ["EZ", "HD", "IN", "AT"]
         songs_num = reader.get_varint()
         while reader.remaining() > 0:
-            song_key = reader.get_string().split(".")
-            song_id = ".".join(song_key[:-1])
+            song_id = reader.get_string()
             reader.skip_varint()
             length = reader.get_byte()
             full_combo = reader.get_byte()
