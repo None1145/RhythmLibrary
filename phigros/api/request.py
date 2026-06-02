@@ -25,13 +25,13 @@ if os.getenv("RHYTHMLIBRARY_DEBUG_CURL") == "1":
 class BaseAPI:
     def __init__(
         self,
+        region: ServerRegion,
         user_profile: dict,
         proxies: dict | None = None,
         *,
         verify_ssl: bool = False,
     ) -> None:
-        server_code = user_profile.get("serverCode", user_profile.get("server", None))
-        self.region = ServerRegion(server_code)
+        self.region = region
         self.user_profile = user_profile
         self.proxies = proxies
         self.verify_ssl = verify_ssl

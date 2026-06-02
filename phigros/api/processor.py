@@ -1,8 +1,12 @@
 from .request import UserAPI
 from ..database import song_data as song_data_database
 
-from ...common import utils
-from ...common import config as common_config
+try:
+    from ...common import utils
+    from ...common import config as common_config
+except ImportError:
+    from common import utils
+    from common import config as common_config
 
 import io
 import time

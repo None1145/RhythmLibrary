@@ -4,8 +4,12 @@ from ..database import player_song_data as player_song_data_database
 from .request import UserAPI
 from ..config import Config
 
-from ...common import utils
-from ...common import config
+try:
+    from ...common import utils
+    from ...common import config
+except ImportError:
+    from common import utils
+    from common import config
 
 import math
 import time

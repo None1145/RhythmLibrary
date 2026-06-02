@@ -1,6 +1,9 @@
 from . import api
 from . import config
-from ..common import utils
+try:
+    from ..common import utils
+except ImportError:
+    from common import utils
 
 import json
 import string

@@ -1,12 +1,26 @@
 from . import api
-from . import utils
 from . import config
 from . import database
+try:
+    from ..common import utils
+except ImportError:
+    from common import utils
 
 import json
+import string
+
+class SafeTemplate(string.Template):
+    delimiter = "$$"
 
 def get_api_processor(user_profile: dict) -> api.processor.Processor:
-    return api.processor.Processor(user_profile=user_profile)
+    server_code = user_profile.get("serverCode", user_profile.get("server", None))
+    if server_code == "cn":
+        region = api.model.ServerRegion.CN
+    elif server_code == "global":
+        region = api.model.ServerRegion.GLOBAL
+    else:
+        raise ValueError("Invalid region")
+    return api.processor.Processor(region=region, user_profile=user_profile)
 
 def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = False) -> str | dict:
     processor = get_api_processor(user_profile)
@@ -33,10 +47,9 @@ def get_best30(user_profile: dict, just_data: bool = False, just_html: bool = Fa
     }
     
     if just_data: return result
-    
-    with open(config.HTML_ASSETS_DIR / "best30.html", "r", encoding="utf-8") as f:
-        html_template = f.read()
-    html = html_template.replace("/{{{data}}}/", json.dumps(result, ensure_ascii=False, indent=4))
+
+    with open(f"{config.HTML_ASSETS_DIR}/best30.html", "r", encoding="utf-8") as f:
+        html = SafeTemplate(f.read()).safe_substitute({"data": json.dumps(result, indent=4, ensure_ascii=False)})
     
     if just_html: return html
     

@@ -23,18 +23,14 @@ user_profiles = [
 class TestProcessor:
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_user_data(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         user_data = processor.get_user_data()
         assert "nickname" in user_data
         assert "sessionToken" in user_data
 
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_summaries(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         summaries = processor.get_summaries()
         assert isinstance(summaries, list)
         assert len(summaries) > 0
@@ -43,18 +39,14 @@ class TestProcessor:
 
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_latest_summary(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         latest = processor.get_latest_summary()
         assert "saveURL" in latest
         assert "summary" in latest
 
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_game_record(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         records = processor.get_game_record()
         assert isinstance(records, list)
         if len(records) > 0:
@@ -68,18 +60,14 @@ class TestProcessor:
 
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_user(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         user = processor.get_user()
         assert "nickname" in user
         assert "avatar" in user
 
     @pytest.mark.parametrize("user_profile", user_profiles)
     def test_get_user_info(self, user_profile):
-        processor = phigros.api.processor.Processor(
-            user_profile=user_profile, verify_ssl=False
-        )
+        processor = phigros.processor.get_api_processor(user_profile=user_profile)
         info = processor.get_user_info()
         assert "nickname" in info
         assert "summary" in info

@@ -1,5 +1,8 @@
 from . import api
-from ..common import utils
+try:
+    from ..common import utils
+except ImportError:
+    from common import utils
 from . import database
 
 import os
