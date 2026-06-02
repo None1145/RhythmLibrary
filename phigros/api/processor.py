@@ -153,7 +153,7 @@ class Processor(UserAPI):
                 song_datas.append({
                     "title": song_info["title"],
                     "score": reader.get_int(),
-                    "accuracy": reader.get_float(),
+                    "accuracy": reader.get_float() / 100,
                     "status": "FC" if (full_combo & (1 << song_level)) != 0 else "NONE",
                     "diff": song_info["levels"][level_map[song_level]],
                     "level": level_map[song_level],
@@ -161,6 +161,7 @@ class Processor(UserAPI):
                 })
                 if song_datas[-1]["score"] >= 1000000:
                     song_datas[-1]["status"] = "AP"
+                
                 song_datas[-1]["rating"] = (((song_datas[-1]["accuracy"] * 100 - 55) / 45) ** 2) * song_datas[-1]["diff"]
         
         return song_datas
