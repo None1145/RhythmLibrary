@@ -97,10 +97,10 @@ class InternationalUtils:
 class InternationalAPI(BaseAPI):
     @staticmethod
     def check_cookie(user_profile: dict):
-        if "_t" not in user_profile:
-            raise ValueError("InternationalAPI requires '_t' in user_profile")
-        if "userId" not in user_profile:
-            raise ValueError("InternationalAPI requires 'userId' in user_profile")
+        if "T" not in user_profile:
+            raise ValueError("InternationalAPI requires 'T' in user_profile")
+        if "userID" not in user_profile:
+            raise ValueError("InternationalAPI requires 'userID' in user_profile")
     
     @staticmethod
     def require_cookie(method):
@@ -130,7 +130,7 @@ class InternationalAPI(BaseAPI):
             self.check_cookie(user_profile=self.user_profile)
             return {
                 "User-Agent": build_user_agent(self.user_profile.get("device", "undefined")),
-                "Cookie": f"_t={self.user_profile['_t']}; userId={self.user_profile['userId']}"
+                "Cookie": f"_t={self.user_profile['T']}; userId={self.user_profile['userID']}"
             }
         except:
             return {"User-Agent": build_user_agent(self.user_profile.get("device", "undefined"))}
