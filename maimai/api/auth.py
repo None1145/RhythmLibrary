@@ -2,6 +2,8 @@ import fake_useragent
 import requests
 import requests.cookies
 
+from .model import AuthServerURL
+
 class International:
     @staticmethod
     def clal(clal: str) -> dict:
@@ -13,7 +15,7 @@ class International:
         cookiejar = requests.cookies.RequestsCookieJar()
 
         response = requests.get(
-            "https://maimaidx-eng.com/maimai-mobile/",
+            AuthServerURL.INTERNATIONAL["mobile"],
             headers=headers,
             allow_redirects=False,
             verify=False
@@ -41,7 +43,7 @@ class International:
         if response.status_code != 302:
             raise requests.RequestException
         cookiejar.update(response.cookies)
-        
+
         return {"_t": cookiejar["_t"], "userId": cookiejar["userId"]}
 
     @staticmethod
@@ -52,9 +54,9 @@ class International:
             ).random
         }
         cookiejar = requests.cookies.RequestsCookieJar()
-            
+
         response = requests.get(
-            "https://maimaidx-eng.com/maimai-mobile/",
+            AuthServerURL.INTERNATIONAL["mobile"],
             headers=headers,
             allow_redirects=False,
             verify=False
@@ -62,7 +64,7 @@ class International:
         if response.status_code != 302:
             raise requests.RequestException
         cookiejar.update(response.cookies)
-            
+
         response = requests.get(
             response.headers.get("Location"),
             cookies=cookiejar,
@@ -72,9 +74,9 @@ class International:
         if response.status_code != 200:
             raise requests.RequestException
         cookiejar.update(response.cookies)
-            
+
         response = requests.post(
-            "https://lng-tgk-aime-gw.am-all.net/common_auth/login/sid",
+            AuthServerURL.INTERNATIONAL["sega_login"],
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             data={
                 "retention": "1",
@@ -88,7 +90,7 @@ class International:
         if response.status_code != 302:
             raise requests.RequestException
         cookiejar.update(response.cookies)
-            
+
         response = requests.get(
             response.headers.get("Location"),
             headers=headers,
@@ -99,5 +101,5 @@ class International:
         if response.status_code != 302:
             raise requests.RequestException
         cookiejar.update(response.cookies)
-        
+
         return {"_t": cookiejar["_t"], "userId": cookiejar["userId"]}
