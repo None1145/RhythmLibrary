@@ -18,106 +18,54 @@ import Crypto.Cipher.AES
 import Crypto.Util.Padding
 
 class ByteReader:
-    def __init__(self, data, position=0):
-        if isinstance(data, str):
-            self.data = bytearray.fromhex(data)
-        else:
-            self.data = bytearray(data)
-        self.position = position
-
-    def remaining(self):
-        return len(self.data) - self.position
-
+    def __init__(self, data: bytes):
+        self.data = data
+        self.position = 0
+    
     def get_byte(self):
         val = self.data[self.position]
         self.position += 1
         return val
 
-    def put_byte(self, num):
-        self.data[self.position] = num
-        self.position += 1
-
-    def get_all_byte(self):
-        return base64.b64encode(self.data[self.position:]).decode()
-
-    def get_short(self):
-        val = self.data[self.position] | (self.data[self.position + 1] << 8)
-        self.position += 2
+    def get_bytes(self, n):
+        val = self.data[self.position:self.position + n]
+        self.position += n
         return val
-
-    def put_short(self, num):
-        self.data[self.position] = num & 0xff
-        self.data[self.position + 1] = (num >> 8) & 0xff
-        self.position += 2
 
     def get_int(self):
-        val = (self.data[self.position] |
-               (self.data[self.position + 1] << 8) |
-               (self.data[self.position + 2] << 16) |
-               (self.data[self.position + 3] << 24))
+        val = struct.unpack_from("<i", self.data, self.position)[0]
         self.position += 4
         return val
-
-    def put_int(self, num):
-        for i in range(4):
-            self.data[self.position + i] = (num >> (8 * i)) & 0xff
-        self.position += 4
 
     def get_float(self):
-        val = struct.unpack("<f", self.data[self.position:self.position + 4])[0]
+        val = struct.unpack_from("<f", self.data, self.position)[0]
         self.position += 4
         return val
-
-    def put_float(self, num):
-        self.data[self.position:self.position + 4] = struct.pack("<f", num)
-        self.position += 4
 
     def get_varint(self):
-        first = self.data[self.position]
-        if first > 127:
-            self.position += 2
-            return (first & 0x7f) ^ (self.data[self.position - 1] << 7)
-        else:
-            self.position += 1
-            return first
+        result = 0
+        shift = 0
 
-    def skip_varint(self, num=None):
-        if num:
-            for _ in range(num):
-                self.skip_varint()
-        else:
-            if self.data[self.position] < 0:
-                self.position += 2
-            else:
-                self.position += 1
+        while True:
+            b = self.get_byte()
+            result |= (b & 0x7F) << shift
 
-    def get_bytes(self):
-        length = self.get_byte()
-        val = self.data[self.position:self.position + length]
-        self.position += length
-        return val
+            if not (b & 0x80):
+                break
 
+            shift += 7
+
+        return result
+    
     def get_string(self):
         length = self.get_varint()
-        val = self.data[self.position:self.position + length].decode("utf-8")
-        self.position += length
+        data = self.get_bytes(length)
+        return data.decode("utf-8")
+
+    def get_short(self):
+        val = struct.unpack_from("<h", self.data, self.position)[0]
+        self.position += 2
         return val
-
-    def put_string(self, s):
-        b = s.encode("utf-8")
-        self.data[self.position] = len(b)
-        self.position += 1
-        self.data[self.position:self.position + len(b)] = b
-        self.position += len(b)
-
-    def skip_string(self):
-        self.position += self.get_byte() + 1
-
-    def insert_bytes(self, bytes_to_insert):
-        self.data = self.data[:self.position] + bytes_to_insert + self.data[self.position:]
-
-    def replace_bytes(self, length, bytes_to_insert):
-        self.data = self.data[:self.position] + bytes_to_insert + self.data[self.position + length:]
 
 class Processor(UserAPI):
     def get_user_data(self) -> dict:
@@ -139,31 +87,51 @@ class Processor(UserAPI):
         
         song_datas = []
         level_map = ["EZ", "HD", "IN", "AT"]
+
         songs_num = reader.get_varint()
-        while reader.remaining() > 0:
+
+        for _ in range(songs_num):
             song_id = reader.get_string()
-            reader.skip_varint()
+
             length = reader.get_byte()
-            full_combo = reader.get_byte()
-            
+
+            value_bytes = reader.get_bytes(length)
+
+            pos = 0
+
+            flag = value_bytes[pos]
+            pos += 1
+
+            full_combo = value_bytes[pos]
+            pos += 1
+
             song_info = song_data_database.song_data.get_song(song_id)
+
             for song_level in range(4):
-                if (length & (1 << song_level)) == 0:
+                if (flag & (1 << song_level)) == 0:
                     continue
+
+                score = int.from_bytes(value_bytes[pos:pos+4], "little", signed=True)
+                pos += 4
+
+                acc = struct.unpack_from("<f", value_bytes, pos)[0]
+                pos += 4
+
+                status = "FC" if (full_combo & (1 << song_level)) != 0 else "NONE"
+                if score >= 1000000:
+                    status = "AP"
+
                 song_datas.append({
                     "title": song_info["title"],
-                    "score": reader.get_int(),
-                    "accuracy": reader.get_float() / 100,
-                    "status": "FC" if (full_combo & (1 << song_level)) != 0 else "NONE",
+                    "score": score,
+                    "accuracy": acc / 100,
+                    "status": status,
                     "diff": song_info["levels"][level_map[song_level]],
                     "level": level_map[song_level],
-                    "id": song_id
+                    "id": song_id,
+                    "rating": (((acc - 55) / 45) ** 2) * song_info["levels"][level_map[song_level]]
                 })
-                if song_datas[-1]["score"] >= 1000000:
-                    song_datas[-1]["status"] = "AP"
-                
-                song_datas[-1]["rating"] = (((song_datas[-1]["accuracy"] * 100 - 55) / 45) ** 2) * song_datas[-1]["diff"]
-        
+
         return song_datas
 
     def _get_user(self, summary: dict) -> dict:
