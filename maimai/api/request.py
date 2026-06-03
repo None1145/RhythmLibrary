@@ -145,7 +145,7 @@ class InternationalAPI(BaseAPI):
             timeout=10,
             verify=self.verify_ssl,
         )
-        if "error" in response.headers.get("Location"):
+        if "error" in response.headers.get("Location", ""):
             raise Exception
         
         return response.text
@@ -160,7 +160,7 @@ class InternationalAPI(BaseAPI):
             timeout=10,
             verify=self.verify_ssl,
         )
-        if "error" in response.headers.get("Location"):
+        if "error" in response.headers.get("Location", ""):
             raise Exception
         
         return response.text
