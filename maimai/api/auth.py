@@ -15,7 +15,8 @@ class International:
         response = requests.get(
             "https://maimaidx-eng.com/maimai-mobile/",
             headers=headers,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
@@ -24,7 +25,8 @@ class International:
         response = requests.get(
             response.headers.get("Location"),
             headers={"Cookie": f"clal={clal}"},
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
@@ -33,7 +35,8 @@ class International:
             response.headers.get("Location"),
             headers=headers,
             cookies=cookiejar,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
@@ -53,7 +56,8 @@ class International:
         response = requests.get(
             "https://maimaidx-eng.com/maimai-mobile/",
             headers=headers,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
@@ -62,7 +66,8 @@ class International:
         response = requests.get(
             response.headers.get("Location"),
             cookies=cookiejar,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 200:
             raise requests.RequestException
@@ -77,7 +82,8 @@ class International:
                 "password": password
             },
             cookies=cookiejar,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
@@ -87,7 +93,8 @@ class International:
             response.headers.get("Location"),
             headers=headers,
             cookies=cookiejar,
-            allow_redirects=False
+            allow_redirects=False,
+            verify=False
         )
         if response.status_code != 302:
             raise requests.RequestException
