@@ -92,3 +92,5 @@ class International:
         if response.status_code != 302:
             raise requests.RequestException
         cookiejar.update(response.cookies)
+        
+        return {"_t": cookiejar["_t"], "userId": cookiejar["userId"]}
