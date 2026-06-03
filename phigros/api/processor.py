@@ -124,12 +124,12 @@ class Processor(UserAPI):
                 song_datas.append({
                     "title": song_info["title"],
                     "score": score,
-                    "accuracy": acc / 100,
+                    "accuracy": acc,
                     "status": status,
                     "diff": song_info["levels"][level_map[song_level]],
                     "level": level_map[song_level],
                     "id": song_id,
-                    "rating": (((acc - 55) / 45) ** 2) * song_info["levels"][level_map[song_level]]
+                    "rating": ((((acc / 100) - 55) / 45) ** 2) * song_info["levels"][level_map[song_level]]
                 })
 
         return song_datas
