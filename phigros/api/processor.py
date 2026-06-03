@@ -147,7 +147,7 @@ class Processor(UserAPI):
             full_combo = reader.get_byte()
             
             song_info = song_data_database.song_data.get_song(song_id)
-            for song_level in range(5):
+            for song_level in range(4):
                 if (length & (1 << song_level)) == 0:
                     continue
                 song_datas.append({
