@@ -7,7 +7,7 @@ class International:
     def clal(clal: str) -> dict:
         headers = {
             "User-Agent": fake_useragent.UserAgent(
-                od=["windows", "macos", "android", "ios"]
+                os=["windows", "macos", "android", "ios"]
             ).random
         }
         cookiejar = requests.cookies.RequestsCookieJar()
@@ -45,7 +45,7 @@ class International:
     def sega(sid: str, password: str) -> dict:
         headers = {
             "User-Agent": fake_useragent.UserAgent(
-                od=["windows", "macos", "android", "ios"]
+                os=["windows", "macos", "android", "ios"]
             ).random
         }
         cookiejar = requests.cookies.RequestsCookieJar()
